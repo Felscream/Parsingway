@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "config": "^3.3.11",
+    "discord.js": "^14.14.1"
+  },
+  "type": "module",
+  "devDependencies": {
+    "eslint": "^8.57.0"
+  }
+}
