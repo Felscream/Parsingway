@@ -4,9 +4,11 @@ import { LocalTime } from "js-joda";
 import { DateTimeFormatter } from "js-joda";
 
 const DURATION_FORMATTER = DateTimeFormatter.ofPattern('m:ss');
+
 class ReportService{
     constructor(fflogsConfiguration){
         this.fflogsClient = new FflogsClient(fflogsConfiguration)
+        this.reportsPerServers = {}
     }
 
     async init(){
@@ -18,7 +20,7 @@ class ReportService{
         try{
             data = await this.fflogsClient.getReport(reportCode);
         } catch(error){
-            console.log(error);
+            console.error(error);
         }
         
         return this.buildReport(data)
@@ -36,6 +38,7 @@ class ReportService{
         const startTime = ZonedDateTime.ofInstant(startInstant, ZoneId.systemDefault())
         const endInstant = Instant.ofEpochMilli(rawReport.endTime);
         const endTime = ZonedDateTime.ofInstant(endInstant, ZoneId.systemDefault())
+        endTime.equals(startTime)
         const report = new Report(rawReport.title, startTime, endTime, this.buildFights(rawReport))
         return new Promise((resolve, reject) => {
             resolve(report)
@@ -64,6 +67,13 @@ class Report{
         this.startTime = startTime
         this.endTime = endTime
         this.fights = fights
+    }
+    equals(otherReport){
+        if(!otherReport || !otherReport.endTime){
+            return false;
+        }
+
+        return this.endTime.equals(otherReport.endTime)
     }
 
 }
