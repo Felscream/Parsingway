@@ -2,7 +2,6 @@
   "dependencies": {
     "config": "^3.3.11",
     "discord.js": "^14.14.1",
-    "got": "^14.2.1",
     "graphql-request": "^6.1.0",
     "js-joda": "^1.11.0"
   },
