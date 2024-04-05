@@ -38,7 +38,6 @@ class ReportService{
         const startTime = ZonedDateTime.ofInstant(startInstant, ZoneId.systemDefault())
         const endInstant = Instant.ofEpochMilli(rawReport.endTime);
         const endTime = ZonedDateTime.ofInstant(endInstant, ZoneId.systemDefault())
-        endTime.equals(startTime)
         const report = new Report(rawReport.title, startTime, endTime, this.buildFights(rawReport))
         return new Promise((resolve, reject) => {
             resolve(report)

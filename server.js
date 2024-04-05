@@ -1,7 +1,7 @@
 import { Client, Events, GatewayIntentBits } from 'discord.js';
 import config from 'config';
 import {ReportService} from './src/fflogs/report-service.js';
-import { Duration, LocalDateTime, ZoneId, ZonedDateTime } from 'js-joda';
+import { Duration, LocalDateTime, ZonedDateTime } from 'js-joda';
 import { createEmbed } from './src/embeds.js';
 
 function sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh = false) {
@@ -99,8 +99,11 @@ parsingway.on(Events.MessageCreate, message => {
     clearInterval(reportPerServer[serverId].timeoutId)
   }
   reportService.synthesize(code).then((report) => {
+    const timeSinceLastReportUpdate = Duration.between(report.endTime, ZonedDateTime.now());
+    const withAutoRefresh = timeSinceLastReportUpdate.seconds() < config.get("ignore_refresh_delay")
+    console.info(`Auto refresh for report ${code} : ${withAutoRefresh}`)
     try{
-      sendReport(serverId, code, channel, report, reportUrl, true);
+      sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh);
     } catch(error){
       console.error(error)
     }
