@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits } from 'discord.js';
+import { ActivityType, Client, Events, GatewayIntentBits } from 'discord.js';
 import config from 'config';
 import {ReportService} from './src/fflogs/report-service.js';
 import { Duration, LocalDateTime, ZonedDateTime } from 'js-joda';
@@ -78,20 +78,29 @@ const reportPerServer = {}
 
 
 parsingway.once(Events.ClientReady, () => {
-  console.log(`Logged in as ${parsingway.user.tag}!`);
+  console.info(`Logged in as ${parsingway.user.tag}!`);
+  parsingway.user.setPresence({activities: [{name : 'greeding that GCD', type: ActivityType.Competing}]})
 });
-parsingway.on(Events.MessageCreate, message => {
-  const serverId = message.guildId
 
-  
+parsingway.on(Events.MessageCreate, message => {
+  if(message.author.id === parsingway.user.id){
+    return
+  }
+  const serverId = message.guildId
   const channel = parsingway.channels.cache.get(message.channelId)
   if(!channel){
-    return;
+    return
   }
   
-  const match = matcher.exec(message);
+  let match = matcher.exec(message);
   if(!match){
-    return;
+    if(message.embeds.length === 0 || !message.embeds[0].data.url){
+      return
+    }
+    match = matcher.exec(message.embeds[0].data.url)
+    if(!match){
+      return
+    }
   }
   const reportUrl = match[1]
   const code = match[2];
