@@ -5,7 +5,7 @@ import { Duration, LocalDateTime, ZonedDateTime } from 'js-joda';
 import { createEmbed } from './src/embeds.js';
 import logger from "./logger.js"
 
-function sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh = false, withAutoRefreshMessage = false) {
+function sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh = false, withAutoRefreshMessage = false, trackReport = false) {
   if (reportPerServer.hasOwnProperty(serverId)) {
     if(reportPerServer[serverId].reportCode === code){
       reportPerServer[serverId].embedMessage.delete();
@@ -19,7 +19,7 @@ function sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh 
       reportPerServer[serverId].embedMessage = sentMessage;
       reportPerServer[serverId].reportCode = code;
       reportPerServer[serverId].channelId = channel.id;
-    } else {
+    } else if(trackReport){
       reportPerServer[serverId] = new ServerReport(reportUrl, code, report, sentMessage, channel.id);
     }
 
@@ -39,7 +39,6 @@ function deleteReport(serverId) {
 }
 
 function updateReport(serverId){
-  
   if(!reportPerServer.hasOwnProperty(serverId)){
     return;
   }
@@ -131,7 +130,7 @@ parsingway.on(Events.MessageCreate, message => {
     const withAutoRefresh = timeSinceLastReportUpdate.seconds() < config.get("ignore_refresh_delay")
     logger.info(`Auto refresh for report ${code} : ${withAutoRefresh}`)
     try{
-      sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh, withAutoRefresh);
+      sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh, withAutoRefresh, withAutoRefresh);
     } catch(error){
       logger.error(error)
     }
