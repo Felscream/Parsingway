@@ -5,13 +5,13 @@ import { Duration, LocalDateTime, ZonedDateTime } from 'js-joda';
 import { createEmbed } from './src/embeds.js';
 import logger from "./logger.js"
 
-function sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh = false) {
+function sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh = false, withAutoRefreshMessage = false) {
   if (reportPerServer.hasOwnProperty(serverId)) {
     if(reportPerServer[serverId].reportCode === code){
       reportPerServer[serverId].embedMessage.delete();
     }
   }
-  channel.send(createEmbed(report, reportUrl)).then(sentMessage => {
+  channel.send(createEmbed(report, reportUrl, withAutoRefreshMessage)).then(sentMessage => {
     if (reportPerServer.hasOwnProperty(serverId)) {
       reportPerServer[serverId].reportUrl = reportUrl;
       reportPerServer[serverId].report = report;
@@ -29,10 +29,13 @@ function sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh 
   });
 }
 
-function deleteReport(serverId, reportCode) {
-  logger.info(`Deleting report ${reportCode} from server ${serverId}`)
-  clearInterval(reportPerServer[serverId].timeoutId);
-  delete reportPerServer[serverId];
+function deleteReport(serverId) {
+  if(reportPerServer.hasOwnProperty(serverId)){
+    const reportCode = reportPerServer[serverId].reportCode
+    logger.info(`Deleting report ${reportCode} from server ${serverId}`)
+    clearInterval(reportPerServer[serverId].timeoutId);
+    delete reportPerServer[serverId];
+  }
 }
 
 function updateReport(serverId){
@@ -44,17 +47,21 @@ function updateReport(serverId){
   const serverReport = reportPerServer[serverId]
   logger.info(`Udpating report ${serverReport.reportCode} for server ${serverId}`)
   if(Duration.between(serverReport.report.endTime, ZonedDateTime.now()).seconds() > config.get('report_TTL')){
-    deleteReport(serverId, serverReport.reportCode);
+    deleteReport(serverId);
     return;
   }
 
-  reportService.synthesize(serverReport.reportCode).then((report) => {
-    try{
-      sendReport(serverId, serverReport.reportCode, serverReport.embedMessage.channel, report, serverReport.reportUrl);
-    } catch(error){
-      logger.error(error)
-    }
-  });
+    reportService.synthesize(serverReport.reportCode).then(report => {
+      try{
+        sendReport(serverId, serverReport.reportCode, serverReport.embedMessage.channel, report, serverReport.reportUrl, false, true);
+      } catch(error){
+        logger.error(error)
+        return
+      }
+    }, reject => {
+      logger.error(reject)
+    });
+  
 }
 
 class ServerReport{
@@ -87,20 +94,28 @@ parsingway.on(Events.MessageCreate, message => {
   if(message.author.id === parsingway.user.id){
     return
   }
-  const serverId = message.guildId
+  
   const channel = parsingway.channels.cache.get(message.channelId)
   if(!channel){
     return
   }
   
+  const serverId = message.guildId
   const matcher = new RegExp(reportMatcher, "g");
   const match = matcher.exec(message.content);
   if(!match){
     if(message.embeds.length === 0 || !message.embeds[0].data.url){
+      if(reportPerServer.hasOwnProperty(serverId) && reportPerServer[serverId].channelId === message.channelId){
+        deleteReport(serverId)
+      }
+      
       return
     }
     const embedMatch = matcher.exec(message.embeds[0].data.url)
     if(!embedMatch){
+      if(reportPerServer.hasOwnProperty(serverId) && reportPerServer[serverId].channelId === message.channelId){
+        deleteReport(serverId)
+      }
       return
     }
   }
@@ -116,10 +131,12 @@ parsingway.on(Events.MessageCreate, message => {
     const withAutoRefresh = timeSinceLastReportUpdate.seconds() < config.get("ignore_refresh_delay")
     logger.info(`Auto refresh for report ${code} : ${withAutoRefresh}`)
     try{
-      sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh);
+      sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh, withAutoRefresh);
     } catch(error){
       logger.error(error)
     }
+  }, reject =>{
+    logger.error(reject)
   });
 });
 

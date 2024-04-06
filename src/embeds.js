@@ -10,7 +10,7 @@ const WIPE_COLOR = "#d8532b"
 const monsterEmoji = "<:encounter:1226088953480740920>"
 const defaultThumbnailUrl = "https://xivapi.com/img-misc/chat_messengericon_raids.png";
 
-export function createEmbed(report, reportUrl){
+export function createEmbed(report, reportUrl, withAutoRefreshMessage){
     const embed = new EmbedBuilder()
     .setTitle(report.title || "Report")
     .setColor(hasKillOnReport(report.fights) ? KILL_COLOR : WIPE_COLOR)
@@ -20,6 +20,15 @@ export function createEmbed(report, reportUrl){
         {name : 'Start', value:report.startTime.format(TIME_FORMATTER), inline: true},
         {name : 'End', value:report.endTime.format(TIME_FORMATTER), inline: true}
     )
+    if(withAutoRefreshMessage){
+        embed.setFooter({
+            text: 'This report is updated every minute. Sending a new report on this server, or a new message on this channel will stop it.'
+        })
+    } else {
+        embed.setFooter({
+            text: 'This report will not be updated.'
+        })
+    }
     if(Object.entries(report.fights).length === 0){
         embed.addFields({name : `No encounter detected yet`, value : "Come back later !"})
     } else {

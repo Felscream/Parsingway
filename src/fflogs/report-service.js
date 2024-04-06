@@ -1,7 +1,7 @@
 import { Duration, Instant, ZoneId, ZonedDateTime } from "js-joda";
 import FflogsClient from "./fflogs-client.js";
 import { LocalTime } from "js-joda";
-import { DateTimeFormatter } from "js-joda";
+import logger from "../../logger.js";
 
 
 
@@ -18,10 +18,11 @@ class ReportService{
     async synthesize(reportCode){
         let data = null
         try{
-            data = await this.fflogsClient.getReport(reportCode);
+            data  = await this.fflogsClient.getReport(reportCode);
         } catch(error){
-            logger.error(error);
+            return Promise.reject(error)
         }
+        
         
         return this.buildReport(data)
     }
