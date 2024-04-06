@@ -45,20 +45,50 @@ class ReportService{
     }
 
     buildFights(report){
-        const pulls = report.fights.filter(fight => fight.difficulty === 100);
+        const pulls = report.fights.filter(fight => fight.difficulty >= 100);
         const fights = {}
-        pulls.forEach(element => {
+        const killsAndWipes = getKillAndWipeNumbers(pulls)
+        pulls.forEach((element, index) => {
             if(!fights.hasOwnProperty(element.name)){
                 fights[element.name] = []
             }
-
+            const encounterNumber = getPullNumber(killsAndWipes, index, element.name)
             const duration = LocalTime.ofInstant(Instant.ofEpochMilli(element.endTime - element.startTime))
             const durationSeconds = Duration.between(Instant.ofEpochMilli(element.startTime), Instant.ofEpochMilli(element.endTime)).seconds()
-            const pull = new Pull(element.bossPercentage, element.fightPercentage, element.kill, duration, element.lastPhase, fights[element.name].length + 1, durationSeconds)
+            const pull = new Pull(element.bossPercentage, element.fightPercentage, element.kill, duration, element.lastPhase, encounterNumber, durationSeconds, element.encounterID)
             fights[element.name].push(pull)
         });
         return fights;
     }
+}
+
+function getKillAndWipeNumbers(pulls){
+    const kills = {}
+    const wipes = {}
+    for (let i = 0; i < pulls.length; i++){
+        const pull = pulls[i]
+        if(!kills.hasOwnProperty(pull.name)){
+            kills[pull.name] = []
+        }
+        if(!wipes.hasOwnProperty(pull.name)){
+            wipes[pull.name] = []
+        }
+        if(pulls[i].kill){
+            kills[pull.name].push(i+1)
+        } else{
+            wipes[pull.name].push(i+1)
+        }
+    }
+    return {kills, wipes}
+}
+
+function getPullNumber(killAndWipes, curIndex, encounter){
+    let number = killAndWipes.wipes[encounter].indexOf(curIndex+1)
+    if(number === -1){
+        number = killAndWipes.kills[encounter].indexOf(curIndex+1)
+    }
+
+    return number + 1
 }
 
 class Report{
@@ -68,18 +98,11 @@ class Report{
         this.endTime = endTime
         this.fights = fights
     }
-    equals(otherReport){
-        if(!otherReport || !otherReport.endTime){
-            return false;
-        }
-
-        return this.endTime.equals(otherReport.endTime)
-    }
 
 }
 
 class Pull{
-    constructor(bossPercentage, fightPercentage, isKill, duration, lastPhase, number, seconds){
+    constructor(bossPercentage, fightPercentage, isKill, duration, lastPhase, number, seconds, encounterId){
         this.bossPercentage = bossPercentage
         this.fightPercentage = fightPercentage
         this.kill = isKill
@@ -87,6 +110,7 @@ class Pull{
         this.durationSeconds = seconds
         this.lastPhase = lastPhase
         this.number = number
+        this.encounterId = encounterId
     }
 }
 export {ReportService, Report, Pull}

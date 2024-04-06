@@ -7,13 +7,6 @@ query getReportData($reportCode: String!){
 			title
 			startTime
 			endTime
-			phases{
-				encounterID
-				phases{
-					id
-					name
-				}
-			}
 			fights{
 				encounterID
 				name

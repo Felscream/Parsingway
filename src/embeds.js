@@ -1,17 +1,20 @@
-import { AttachmentBuilder, EmbedBuilder } from "discord.js";
+import { EmbedBuilder } from "discord.js";
 import { DateTimeFormatter } from "js-joda";
+import encounterThumbnails from "../resources/encounter_thumbail.json" assert {type: 'json'}
 
 const TIME_FORMATTER = DateTimeFormatter.ofPattern('dd/MM/yyyy HH:mm');
 const DURATION_FORMATTER = DateTimeFormatter.ofPattern('m:ss');
 const empty = '\u200B';
 const KILL_COLOR = "#95ed5e"
 const WIPE_COLOR = "#d8532b"
+const monsterEmoji = "<:encounter:1226088953480740920>"
+const defaultThumbnailUrl = "https://xivapi.com/img-misc/chat_messengericon_raids.png";
 
 export function createEmbed(report, reportUrl){
     const embed = new EmbedBuilder()
     .setTitle(report.title || "Report")
     .setColor(hasKillOnReport(report.fights) ? KILL_COLOR : WIPE_COLOR)
-    .setThumbnail("https://xivapi.com/img-misc/chat_messengericon_raids.png")
+    .setThumbnail(getThumbnail(report.fights))
     .setURL(reportUrl)
     .addFields(
         {name : 'Start', value:report.startTime.format(TIME_FORMATTER), inline: true},
@@ -30,8 +33,8 @@ export function createEmbed(report, reportUrl){
             const percentage = getBestPullInfo(bestPull, fights)
             const wipes = getWipes(fights)
             embed.addFields(
-                {name : `<:encounter:1226088953480740920>** ${key}**`, value : empty},
-                {name: "Best pull", value:`**${bestPull.number}.** ${bestPull.duration.format(DURATION_FORMATTER)} - ${phase}${percentage}`, inline: true},
+                {name : `${monsterEmoji}** ${key}**`, value : empty},
+                {name: `Best ${bestPull.kill ? 'kill' : 'pull'}`, value:`**${bestPull.number}.** ${bestPull.duration.format(DURATION_FORMATTER)} - ${phase}${percentage}`, inline: true},
                 {name: "Wipes", value: `${wipes}`, inline:true},
             )
             fieldCount += 3
@@ -42,9 +45,22 @@ export function createEmbed(report, reportUrl){
 
 function getBestPull(pulls){
     return pulls.reduce((prev, curr) => {
+        if(!prev.kill && curr.kill){
+            return curr
+        }
+
+        if(prev.kill && !curr.kill){
+            return prev
+        }
+
         if(prev.kill && curr.kill && prev.duration > curr.duration){
             return curr;
         }
+
+        if(prev.kill && curr.kill && prev.duration < curr.duration){
+            return prev;
+        }
+
         if(prev.fightPercentage > curr.fightPercentage){
             return curr;
         }
@@ -77,4 +93,24 @@ function hasKillOnReport(fights){
         }
     }
     return false
+}
+
+function getEncounterWithMostPulls(fights){
+    let encounterId = -1
+    let pullCount = -1
+    for (let [key, fight] of Object.entries(fights)){
+        if(fight.length > pullCount){
+            pullCount = fight.length
+            encounterId = fight[0].encounterId
+        }
+    }
+    return encounterId
+}
+
+function getThumbnail(fights){
+    const mostPlayedEncounter = getEncounterWithMostPulls(fights)
+    if(encounterThumbnails.hasOwnProperty(mostPlayedEncounter)){
+        return encounterThumbnails[mostPlayedEncounter].thumbnail
+    }
+    return defaultThumbnailUrl
 }
