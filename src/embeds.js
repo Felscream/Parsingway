@@ -1,4 +1,4 @@
-import { EmbedBuilder } from "discord.js";
+import { AttachmentBuilder, EmbedBuilder } from "discord.js";
 import { DateTimeFormatter } from "js-joda";
 
 const TIME_FORMATTER = DateTimeFormatter.ofPattern('dd/MM/yyyy HH:mm');
@@ -14,23 +14,27 @@ export function createEmbed(report, reportUrl){
     .setThumbnail("https://xivapi.com/img-misc/chat_messengericon_raids.png")
     .setURL(reportUrl)
     .addFields(
-        {name : '🚩 Start', value:report.startTime.format(TIME_FORMATTER), inline: true},
-        {name : '🏁 End', value:report.endTime.format(TIME_FORMATTER), inline: true}
+        {name : 'Start', value:report.startTime.format(TIME_FORMATTER), inline: true},
+        {name : 'End', value:report.endTime.format(TIME_FORMATTER), inline: true}
     )
     if(Object.entries(report.fights).length === 0){
         embed.addFields({name : `No encounter detected yet`, value : "Come back later !"})
     } else {
+        let fieldCount = 2
         for (let [key, fights] of Object.entries(report.fights)){
+            if(fieldCount + 3 > 25){
+                return {embeds: [embed]}
+            }
             const bestPull = getBestPull(fights)
             const phase = bestPull.lastPhase !== 0 ? `P${bestPull.lastPhase} ` : ''
             const percentage = getBestPullInfo(bestPull, fights)
             const wipes = getWipes(fights)
             embed.addFields(
-                {name : `**${key}**`, value : empty},
+                {name : `<:encounter:1226088953480740920>** ${key}**`, value : empty},
                 {name: "Best pull", value:`**${bestPull.number}.** ${bestPull.duration.format(DURATION_FORMATTER)} - ${phase}${percentage}`, inline: true},
                 {name: "Wipes", value: `${wipes}`, inline:true},
-    
             )
+            fieldCount += 3
         }
     }
     return {embeds: [embed]}
