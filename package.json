@@ -12,6 +12,6 @@
     "pino-pretty": "^11.0.0"
   },
   "scripts": {
-    "start": "node --watch server.js | npx pino-pretty"
+    "start": "node --watch server.js"
   }
 }

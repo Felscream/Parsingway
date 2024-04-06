@@ -5,5 +5,4 @@ const logger = pino({transport: {
         colorize: true
       }
   },})
-  logger.info('test')
 export default logger
