@@ -42,7 +42,7 @@ function updateReport(serverId){
 
   const serverReport = reportPerServer[serverId]
 
-  if(Duration.between(serverReport.lastUpdate, LocalDateTime.now()).seconds() > config.get('report_TTL')){
+  if(Duration.between(serverReport.report.endTime, ZonedDateTime.now()).seconds() > config.get('report_TTL')){
     deleteReport(serverId, serverReport.reportCode);
     return;
   }
