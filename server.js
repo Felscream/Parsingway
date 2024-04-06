@@ -70,7 +70,6 @@ class ServerReport{
 
 const token = config.get('token')
 const parsingway = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
-const matcher = new RegExp(/(https:\/\/www.fflogs.com\/reports\/([A-za-z0-9]+))#?/, "g");
 const reportService = new ReportService(config.get("fflogs"))
 reportService.init()
 
@@ -82,6 +81,7 @@ parsingway.once(Events.ClientReady, () => {
   parsingway.user.setPresence({activities: [{name : 'greeding that GCD', type: ActivityType.Competing}]})
 });
 
+const reportMatcher = /(https:\/\/www.fflogs.com\/reports\/([A-za-z0-9]+))#?/;
 parsingway.on(Events.MessageCreate, message => {
   if(message.author.id === parsingway.user.id){
     return
@@ -92,21 +92,24 @@ parsingway.on(Events.MessageCreate, message => {
     return
   }
   
-  let match = matcher.exec(message);
+  const matcher = new RegExp(reportMatcher, "g");
+  const match = matcher.exec(message.content);
   if(!match){
     if(message.embeds.length === 0 || !message.embeds[0].data.url){
       return
     }
-    match = matcher.exec(message.embeds[0].data.url)
-    if(!match){
+    const embedMatch = matcher.exec(message.embeds[0].data.url)
+    if(!embedMatch){
       return
     }
   }
   const reportUrl = match[1]
   const code = match[2];
   if (reportPerServer.hasOwnProperty(serverId) && reportPerServer[serverId].timeoutId) {
+    console.log("Clearing previous report auto refresh")
     clearInterval(reportPerServer[serverId].timeoutId)
   }
+  console.info(`Received new report ${code}`)
   reportService.synthesize(code).then((report) => {
     const timeSinceLastReportUpdate = Duration.between(report.endTime, ZonedDateTime.now());
     const withAutoRefresh = timeSinceLastReportUpdate.seconds() < config.get("ignore_refresh_delay")
