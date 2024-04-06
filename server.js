@@ -110,7 +110,7 @@ parsingway.on(Events.MessageCreate, message => {
     logger.info(`Clearing previous report auto refresh for report ${reportPerServer[serverId].reportCode} on server ${serverId}`)
     clearInterval(reportPerServer[serverId].timeoutId)
   }
-  logger.info(`Received new report ${code}`)
+  logger.info(`Received new report ${code} from ${serverId}`)
   reportService.synthesize(code).then((report) => {
     const timeSinceLastReportUpdate = Duration.between(report.endTime, ZonedDateTime.now());
     const withAutoRefresh = timeSinceLastReportUpdate.seconds() < config.get("ignore_refresh_delay")
