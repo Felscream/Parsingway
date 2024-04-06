@@ -3,7 +3,7 @@ import FflogsClient from "./fflogs-client.js";
 import { LocalTime } from "js-joda";
 import { DateTimeFormatter } from "js-joda";
 
-const DURATION_FORMATTER = DateTimeFormatter.ofPattern('m:ss');
+
 
 class ReportService{
     constructor(fflogsConfiguration){
@@ -20,7 +20,7 @@ class ReportService{
         try{
             data = await this.fflogsClient.getReport(reportCode);
         } catch(error){
-            console.error(error);
+            logger.error(error);
         }
         
         return this.buildReport(data)
@@ -52,8 +52,9 @@ class ReportService{
                 fights[element.name] = []
             }
 
-            const duration = LocalTime.ofInstant(Instant.ofEpochMilli(element.endTime - element.startTime)).format(DURATION_FORMATTER)
-            const pull = new Pull(element.bossPercentage, element.fightPercentage, element.kill, duration, element.lastPhase, fights[element.name].length + 1)
+            const duration = LocalTime.ofInstant(Instant.ofEpochMilli(element.endTime - element.startTime))
+            const durationSeconds = Duration.between(Instant.ofEpochMilli(element.startTime), Instant.ofEpochMilli(element.endTime)).seconds()
+            const pull = new Pull(element.bossPercentage, element.fightPercentage, element.kill, duration, element.lastPhase, fights[element.name].length + 1, durationSeconds)
             fights[element.name].push(pull)
         });
         return fights;
@@ -78,11 +79,12 @@ class Report{
 }
 
 class Pull{
-    constructor(bossPercentage, fightPercentage, isKill, duration, lastPhase, number){
+    constructor(bossPercentage, fightPercentage, isKill, duration, lastPhase, number, seconds){
         this.bossPercentage = bossPercentage
         this.fightPercentage = fightPercentage
         this.kill = isKill
         this.duration = duration
+        this.durationSeconds = seconds
         this.lastPhase = lastPhase
         this.number = number
     }

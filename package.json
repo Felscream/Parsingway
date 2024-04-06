@@ -3,13 +3,15 @@
     "config": "^3.3.11",
     "discord.js": "^14.14.1",
     "graphql-request": "^6.1.0",
-    "js-joda": "^1.11.0"
+    "js-joda": "^1.11.0",
+    "pino": "^8.19.0"
   },
   "type": "module",
   "devDependencies": {
-    "eslint": "^8.57.0"
+    "eslint": "^8.57.0",
+    "pino-pretty": "^11.0.0"
   },
   "scripts": {
-    "start": "node --watch server.js"
+    "start": "node --watch server.js | npx pino-pretty"
   }
 }

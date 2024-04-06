@@ -3,6 +3,7 @@ import config from 'config';
 import {ReportService} from './src/fflogs/report-service.js';
 import { Duration, LocalDateTime, ZonedDateTime } from 'js-joda';
 import { createEmbed } from './src/embeds.js';
+import logger from "./logger.js"
 
 function sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh = false) {
   if (reportPerServer.hasOwnProperty(serverId)) {
@@ -29,19 +30,19 @@ function sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh 
 }
 
 function deleteReport(serverId, reportCode) {
-  console.log(`Deleting report ${reportCode} from server ${serverId}`)
+  logger.info(`Deleting report ${reportCode} from server ${serverId}`)
   clearInterval(reportPerServer[serverId].timeoutId);
   delete reportPerServer[serverId];
 }
 
 function updateReport(serverId){
-  console.log(`Udpating report for server ${serverId}`)
+  
   if(!reportPerServer.hasOwnProperty(serverId)){
     return;
   }
 
   const serverReport = reportPerServer[serverId]
-
+  logger.info(`Udpating report ${serverReport.reportCode} for server ${serverId}`)
   if(Duration.between(serverReport.report.endTime, ZonedDateTime.now()).seconds() > config.get('report_TTL')){
     deleteReport(serverId, serverReport.reportCode);
     return;
@@ -51,7 +52,7 @@ function updateReport(serverId){
     try{
       sendReport(serverId, serverReport.reportCode, serverReport.embedMessage.channel, report, serverReport.reportUrl);
     } catch(error){
-      console.error(error)
+      logger.error(error)
     }
   });
 }
@@ -77,7 +78,7 @@ const reportPerServer = {}
 
 
 parsingway.once(Events.ClientReady, () => {
-  console.info(`Logged in as ${parsingway.user.tag}!`);
+  logger.info(`Logged in as ${parsingway.user.tag}!`);
   parsingway.user.setPresence({activities: [{name : 'greeding that GCD', type: ActivityType.Competing}]})
 });
 
@@ -106,18 +107,18 @@ parsingway.on(Events.MessageCreate, message => {
   const reportUrl = match[1]
   const code = match[2];
   if (reportPerServer.hasOwnProperty(serverId) && reportPerServer[serverId].timeoutId) {
-    console.log("Clearing previous report auto refresh")
+    logger.info(`Clearing previous report auto refresh for report ${reportPerServer[serverId].reportCode} on server ${serverId}`)
     clearInterval(reportPerServer[serverId].timeoutId)
   }
-  console.info(`Received new report ${code}`)
+  logger.info(`Received new report ${code}`)
   reportService.synthesize(code).then((report) => {
     const timeSinceLastReportUpdate = Duration.between(report.endTime, ZonedDateTime.now());
     const withAutoRefresh = timeSinceLastReportUpdate.seconds() < config.get("ignore_refresh_delay")
-    console.info(`Auto refresh for report ${code} : ${withAutoRefresh}`)
+    logger.info(`Auto refresh for report ${code} : ${withAutoRefresh}`)
     try{
       sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh);
     } catch(error){
-      console.error(error)
+      logger.error(error)
     }
   });
 });
