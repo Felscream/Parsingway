@@ -18,5 +18,22 @@
     "1060":{
         "name": "The Unending Coil of Bahamut",
         "thumbnail": "https://i.imgur.com/QT9dlN9.png"
+    },
+    "92":{
+        "name": "Pallas Athena",
+        "thumbnail": "https://i.imgur.com/r2ZKJLc.png"
+    },
+    "91":{
+        "name": "Athena",
+        "thumbnail": "https://i.imgur.com/5peX1iJ.png"
+    },
+    "87":{
+        "name": "Hephaistos II",
+        "thumbnail": "https://i.imgur.com/7Ttv9S2.png"
+    },
+    "86":{
+        "name": "Hephaistos",
+        "thumbnail": "https://i.imgur.com/jQXQ98o.png"
     }
+    
 }

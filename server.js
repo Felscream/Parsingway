@@ -117,7 +117,7 @@ parsingway.on(Events.MessageCreate, message => {
   
   const serverId = message.guildId
   const matcher = new RegExp(reportMatcher, "g");
-  const match = matcher.exec(message.content);
+  let match = matcher.exec(message.content);
   if(!match){
     if(message.embeds.length === 0 || !message.embeds[0].data.url){
       if(reportPerServer.hasOwnProperty(serverId) && reportPerServer[serverId].channelId === message.channelId){
@@ -125,8 +125,8 @@ parsingway.on(Events.MessageCreate, message => {
       }
       return
     }
-    const embedMatch = matcher.exec(message.embeds[0].data.url)
-    if(!embedMatch){
+    match = matcher.exec(message.embeds[0].data.url)
+    if(!match){
       if(reportPerServer.hasOwnProperty(serverId) && reportPerServer[serverId].channelId === message.channelId){
         deleteReport(serverId)
       }
