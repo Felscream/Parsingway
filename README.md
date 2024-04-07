@@ -7,7 +7,7 @@ A small Discord bot that reads the most played encounters from an FFLogs report 
 
 The bot can only track one report per server.
 
-Reports that have not been updated for more that 8 hours are not tracked.
+Reports that have not been updated for more than 8 hours are not tracked.
 
 Dungeons and small encounters are not displayed.
 
