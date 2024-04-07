@@ -43,7 +43,7 @@ export function createEmbed(report, reportUrl, withAutoRefreshMessage){
             const percentage = getBestPullInfo(bestPull, fights)
             const wipes = getWipes(fights)
             embed.addFields(
-                {name : `${monsterEmoji}** ${key}**`, value : `*${fights.length} pulls*`},
+                {name : `${monsterEmoji}** ${key}**`, value : `*${fights.length > 1 ? 'pulls' : 'pull'} *`},
                 {name: `Best ${bestPull.kill ? 'kill' : 'pull'}`, value:`**${bestPull.number}.** ${bestPull.duration.format(DURATION_FORMATTER)} - ${phase}${percentage}`, inline: true},
                 {name: "Wipes", value: `${wipes}`, inline:true},
             )
