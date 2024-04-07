@@ -132,3 +132,4 @@ dist
 config/
 .vscode
 package-lock.json
+*.code-workspace

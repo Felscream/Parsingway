@@ -11,12 +11,12 @@
         "name": "The Epic of Alexander",
         "thumbnail": "https://i.imgur.com/6RsHJUX.png"
     },
-    "1060":{
-        "name": "The Unending Coil of Bahamut",
-        "thumbnail": "https://i.imgur.com/QT9dlN9.png"
-    },
     "1061":{
         "name": "The Weapon's Refrain (Ultimate)",
         "thumbnail": "https://i.imgur.com/WR7dOe5.png"
+    },
+    "1060":{
+        "name": "The Unending Coil of Bahamut",
+        "thumbnail": "https://i.imgur.com/QT9dlN9.png"
     }
 }

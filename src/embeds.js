@@ -1,6 +1,7 @@
 import { EmbedBuilder } from "discord.js";
 import { DateTimeFormatter } from "js-joda";
 import encounterThumbnails from "../resources/encounter_thumbail.json" assert {type: 'json'}
+import { getEncounterWithMostPulls } from "./fflogs/report-service.js";
 
 const TIME_FORMATTER = DateTimeFormatter.ofPattern('dd/MM/yyyy HH:mm');
 const DURATION_FORMATTER = DateTimeFormatter.ofPattern('m:ss');
@@ -38,11 +39,11 @@ export function createEmbed(report, reportUrl, withAutoRefreshMessage){
                 return {embeds: [embed]}
             }
             const bestPull = getBestPull(fights)
-            const phase = bestPull.lastPhase !== 0 ? `P${bestPull.lastPhase} ` : ''
+            const phase = bestPull.lastPhase !== 0 && !bestPull.kill ? `P${bestPull.lastPhase} ` : ''
             const percentage = getBestPullInfo(bestPull, fights)
             const wipes = getWipes(fights)
             embed.addFields(
-                {name : `${monsterEmoji}** ${key}**`, value : empty},
+                {name : `${monsterEmoji}** ${key}**`, value : `*${fights.length} pulls*`},
                 {name: `Best ${bestPull.kill ? 'kill' : 'pull'}`, value:`**${bestPull.number}.** ${bestPull.duration.format(DURATION_FORMATTER)} - ${phase}${percentage}`, inline: true},
                 {name: "Wipes", value: `${wipes}`, inline:true},
             )
@@ -104,22 +105,10 @@ function hasKillOnReport(fights){
     return false
 }
 
-function getEncounterWithMostPulls(fights){
-    let encounterId = -1
-    let pullCount = -1
-    for (let [key, fight] of Object.entries(fights)){
-        if(fight.length > pullCount){
-            pullCount = fight.length
-            encounterId = fight[0].encounterId
-        }
-    }
-    return encounterId
-}
-
 function getThumbnail(fights){
-    const mostPlayedEncounter = getEncounterWithMostPulls(fights)
-    if(encounterThumbnails.hasOwnProperty(mostPlayedEncounter)){
-        return encounterThumbnails[mostPlayedEncounter].thumbnail
+    const mostPlayedEncounterId = getEncounterWithMostPulls(fights).id
+    if(encounterThumbnails.hasOwnProperty(mostPlayedEncounterId)){
+        return encounterThumbnails[mostPlayedEncounterId].thumbnail
     }
     return defaultThumbnailUrl
 }

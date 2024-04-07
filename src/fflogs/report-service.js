@@ -2,6 +2,7 @@ import { Duration, Instant, ZoneId, ZonedDateTime } from "js-joda";
 import FflogsClient from "./fflogs-client.js";
 import { LocalTime } from "js-joda";
 import logger from "../../logger.js";
+import objectHash from "object-hash";
 
 
 
@@ -23,18 +24,10 @@ class ReportService{
             return Promise.reject(error)
         }
         
-        
-        return this.buildReport(data)
+        return this.buildReport(data.reportData.report)
     }
 
-    buildReport(data){
-        if(data == null){
-            return new Promise((resolve, reject) =>{
-                reject(null)
-            })
-        }
-        const rawReport = data.reportData.report;
-        
+    buildReport(rawReport){
         const startInstant = Instant.ofEpochMilli(rawReport.startTime);
         const startTime = ZonedDateTime.ofInstant(startInstant, ZoneId.systemDefault())
         const endInstant = Instant.ofEpochMilli(rawReport.endTime);
@@ -59,8 +52,33 @@ class ReportService{
             const pull = new Pull(element.bossPercentage, element.fightPercentage, element.kill, duration, element.lastPhase, encounterNumber, durationSeconds, element.encounterID)
             fights[element.name].push(pull)
         });
-        return fights;
+        
+        return sortEncountersByPullNumber(fights);
     }
+}
+
+function sortEncountersByPullNumber(fights) {
+    const sortedFights = {};
+    while (Object.keys(fights).length > 0) {
+        const encounter = getEncounterWithMostPulls(fights);
+        sortedFights[encounter.name] = fights[encounter.name];
+        delete fights[encounter.name];
+    }
+    return sortedFights
+}
+
+function getEncounterWithMostPulls(fights){
+    let encounterId = -1
+    let pullCount = -1
+    let encounterName = ''
+    for (let [key, fight] of Object.entries(fights)){
+        if(fight.length > pullCount){
+            pullCount = fight.length
+            encounterId = fight[0].encounterId
+            encounterName = key
+        }
+    }
+    return {name: encounterName, id: encounterId}
 }
 
 function getKillAndWipeNumbers(pulls){
@@ -100,6 +118,10 @@ class Report{
         this.fights = fights
     }
 
+    getHash(){
+        return objectHash.sha1(this, { excludeKeys : key => key === "endTime" })
+    }
+
 }
 
 class Pull{
@@ -114,4 +136,4 @@ class Pull{
         this.encounterId = encounterId
     }
 }
-export {ReportService, Report, Pull}
+export {ReportService, Report, Pull, getEncounterWithMostPulls}

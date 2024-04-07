@@ -5,26 +5,33 @@ import { Duration, LocalDateTime, ZonedDateTime } from 'js-joda';
 import { createEmbed } from './src/embeds.js';
 import logger from "./logger.js"
 
+const REPORT_UPDATE_DELAY = config.get('report_update_delay'); // period between report updates
+const REPORT_TTL = config.get('report_TTL'); // how long we are waiting for a change in the log report before we delete it
+const OLD_REPORT_THESHOLD = config.get('old_report_threshold'); // how old should a report be before it is considered too old to be updated regularly
+
 function sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh = false, withAutoRefreshMessage = false, trackReport = false) {
   if (reportPerServer.hasOwnProperty(serverId)) {
-    if(reportPerServer[serverId].reportCode === code){
-      reportPerServer[serverId].embedMessage.delete();
+    if(reportPerServer[serverId].reportCode === code && reportPerServer[serverId].channelId === channel.id){
+      reportPerServer[serverId].embedMessage.delete()
     }
   }
   channel.send(createEmbed(report, reportUrl, withAutoRefreshMessage)).then(sentMessage => {
+    const reportHash = report.getHash()
+    const reportEndOfLife = LocalDateTime.now().plusSeconds(REPORT_TTL)
     if (reportPerServer.hasOwnProperty(serverId)) {
-      reportPerServer[serverId].reportUrl = reportUrl;
-      reportPerServer[serverId].report = report;
-      reportPerServer[serverId].lastUpdate = LocalDateTime.now();
-      reportPerServer[serverId].embedMessage = sentMessage;
-      reportPerServer[serverId].reportCode = code;
-      reportPerServer[serverId].channelId = channel.id;
+      reportPerServer[serverId].reportUrl = reportUrl
+      reportPerServer[serverId].endOfLife = reportEndOfLife
+      reportPerServer[serverId].embedMessage = sentMessage
+      reportPerServer[serverId].reportCode = code
+      reportPerServer[serverId].channelId = channel.id
+      reportPerServer[serverId].reportHash = reportHash
+      reportPerServer[serverId].reportEndTime = report.endTime
     } else if(trackReport){
-      reportPerServer[serverId] = new ServerReport(reportUrl, code, report, sentMessage, channel.id);
+      reportPerServer[serverId] = new ServerReport(reportUrl, code, reportEndOfLife, report.endTime, sentMessage, channel.id,reportHash)
     }
 
     if(withAutoRefresh){
-      reportPerServer[serverId].timeoutId = setInterval(updateReport, config.get('report_update_delay'), serverId)
+      reportPerServer[serverId].timeoutId = setInterval(updateReport, REPORT_UPDATE_DELAY, serverId)
     }
   });
 }
@@ -38,39 +45,48 @@ function deleteReport(serverId) {
   }
 }
 
+
 function updateReport(serverId){
   if(!reportPerServer.hasOwnProperty(serverId)){
     return;
   }
 
   const serverReport = reportPerServer[serverId]
-  logger.info(`Udpating report ${serverReport.reportCode} for server ${serverId}`)
-  if(Duration.between(serverReport.report.endTime, ZonedDateTime.now()).seconds() > config.get('report_TTL')){
-    deleteReport(serverId);
-    return;
-  }
 
-    reportService.synthesize(serverReport.reportCode).then(report => {
-      try{
-        sendReport(serverId, serverReport.reportCode, serverReport.embedMessage.channel, report, serverReport.reportUrl, false, true);
-      } catch(error){
-        logger.error(error)
-        return
+  reportService.synthesize(serverReport.reportCode).then(newReport => {
+    const newReportHash = newReport.getHash();
+    if(newReportHash === serverReport.reportHash){
+      logger.info(`Report ${serverReport.reportCode} from server ${serverId} has not changed, no update required`)
+      if(Duration.between(serverReport.endOfLife, ZonedDateTime.now()).seconds() > 0){
+        logger.info(`No changes detected for a long period on report ${serverReport.reportCode} from server ${serverId}, it will be deleted`)
+        deleteReport(serverId);
       }
-    }, reject => {
-      logger.error(reject)
-    });
+      return
+    }
+
+    logger.info(`Changes detected on report ${serverReport.reportCode} from server ${serverId}, updating ...`)
+
+    try{
+      sendReport(serverId, serverReport.reportCode, serverReport.embedMessage.channel, newReport, serverReport.reportUrl, false, true);
+    } catch(error){
+      logger.error(error)
+      return
+    }
+  }, reject => {
+    logger.error(reject)
+  });
   
 }
 
 class ServerReport{
-  constructor(reportUrl, reportCode, report, embedMessage, channelId){
+  constructor(reportUrl, reportCode, endOfLife, endTime, embedMessage, channelId, reportHash){
     this.reportUrl = reportUrl
     this.reportCode = reportCode
-    this.report = report
-    this.lastUpdate = LocalDateTime.now()
+    this.endOfLife = endOfLife
+    this.reportEndTime = endTime
     this.embedMessage = embedMessage
     this.channelId = channelId
+    this.reportHash = reportHash
     this.timeoutId = null
   }
 }
@@ -107,7 +123,6 @@ parsingway.on(Events.MessageCreate, message => {
       if(reportPerServer.hasOwnProperty(serverId) && reportPerServer[serverId].channelId === message.channelId){
         deleteReport(serverId)
       }
-      
       return
     }
     const embedMatch = matcher.exec(message.embeds[0].data.url)
@@ -127,7 +142,7 @@ parsingway.on(Events.MessageCreate, message => {
   logger.info(`Received new report ${code} from ${serverId}`)
   reportService.synthesize(code).then((report) => {
     const timeSinceLastReportUpdate = Duration.between(report.endTime, ZonedDateTime.now());
-    const withAutoRefresh = timeSinceLastReportUpdate.seconds() < config.get("ignore_refresh_delay")
+    const withAutoRefresh = timeSinceLastReportUpdate.seconds() < OLD_REPORT_THESHOLD
     logger.info(`Auto refresh for report ${code} : ${withAutoRefresh}`)
     try{
       sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh, withAutoRefresh, withAutoRefresh);
