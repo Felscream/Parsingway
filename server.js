@@ -11,35 +11,42 @@ const REPORT_TTL = config.get('report_TTL'); // how long we are waiting for a ch
 const OLD_REPORT_THESHOLD = config.get('old_report_threshold'); // how old should a report be before it is considered too old to be updated regularly
 const MAX_SERVER_COUNT = config.get('max_servers') // how many servers can have live logging
 
-function sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh = false, withAutoRefreshMessage = false, trackReport = false) {
+function sendReport(serverId, code, channel, report, reportUrl, saveNewReport = false, withAutoRefreshMessage = false) {
   if (reportPerServer.hasOwnProperty(serverId)) {
     if(reportPerServer[serverId].reportCode === code && reportPerServer[serverId].channelId === channel.id){
       reportPerServer[serverId].embedMessage.delete()
     }
   }
   const embed = createEmbed(report, reportUrl, withAutoRefreshMessage);
-  channel.send({embeds: [embed], flags: MessageFlags.SuppressNotifications}).then(sentMessage => {
-    const reportHash = report.getHash()
-    const reportEndOfLife = LocalDateTime.now().plusSeconds(REPORT_TTL)
-    if (reportPerServer.hasOwnProperty(serverId)) {
-      reportPerServer[serverId].reportUrl = reportUrl
-      reportPerServer[serverId].endOfLife = reportEndOfLife
-      reportPerServer[serverId].embedMessage = sentMessage
-      reportPerServer[serverId].reportCode = code
-      reportPerServer[serverId].channelId = channel.id
-      reportPerServer[serverId].reportHash = reportHash
-      reportPerServer[serverId].reportEndTime = report.endTime
-    } else if(trackReport){
-      logger.info(`Added report ${code} from ${serverId} to tracked reports`)
-      reportPerServer[serverId] = new ServerReport(reportUrl, code, reportEndOfLife, report.endTime, sentMessage, channel.id,reportHash)
-    } else if(!trackReport  && Object.keys(reportPerServer).length >= MAX_SERVER_COUNT){
-      logger.warn("Cannot track more reports")
-    }
+  channel.send({embeds: [embed], flags: MessageFlags.SuppressNotifications}).then(setServerReport(report, serverId, reportUrl, code, channel, saveNewReport));
+}
 
-    if(withAutoRefresh){
-      reportPerServer[serverId].timeoutId = setInterval(updateReport, REPORT_UPDATE_DELAY, serverId)
+function setServerReport(report, serverId, reportUrl, code, channel, saveNewReport) {
+  return sentMessage => {
+    const reportHash = report.getHash();
+    const reportEndOfLife = LocalDateTime.now().plusSeconds(REPORT_TTL);
+    if (reportPerServer.hasOwnProperty(serverId)) {
+      updateServerReport(serverId, reportUrl, reportEndOfLife, sentMessage, code, channel, reportHash, report);
+      return;
     }
-  });
+    if (saveNewReport) {
+      reportPerServer[serverId] = new ServerReport(reportUrl, code, reportEndOfLife, report.endTime, sentMessage, channel.id, reportHash);
+      reportPerServer[serverId].timeoutId = setInterval(updateReport, REPORT_UPDATE_DELAY, serverId);
+      logger.info(`Added report ${code} from ${serverId} to tracked reports`);
+    } else if(!canTrackReport(serverId)){
+      logger.warn("Cannot track more reports");
+    }
+  };
+}
+
+function updateServerReport(serverId, reportUrl, reportEndOfLife, sentMessage, code, channel, reportHash, report) {
+  reportPerServer[serverId].reportUrl = reportUrl;
+  reportPerServer[serverId].endOfLife = reportEndOfLife;
+  reportPerServer[serverId].embedMessage = sentMessage;
+  reportPerServer[serverId].reportCode = code;
+  reportPerServer[serverId].channelId = channel.id;
+  reportPerServer[serverId].reportHash = reportHash;
+  reportPerServer[serverId].reportEndTime = report.endTime;
 }
 
 function deleteReport(serverId) {
@@ -139,10 +146,11 @@ parsingway.on(Events.MessageCreate, message => {
   logger.info(`Received new report ${code} from ${serverId}`)
   reportService.synthesize(code).then((report) => {
     const timeSinceLastReportUpdate = Duration.between(report.endTime, ZonedDateTime.now());
-    const withAutoRefresh = timeSinceLastReportUpdate.seconds() < OLD_REPORT_THESHOLD && canTrackReport(serverId)
+    const withAutoRefresh = timeSinceLastReportUpdate.seconds() < OLD_REPORT_THESHOLD
+    const saveNewReport = canTrackReport(serverId) && withAutoRefresh
     logger.info(`Auto refresh for report ${code} : ${withAutoRefresh}`)
     try{
-      sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh, withAutoRefresh, withAutoRefresh);
+      sendReport(serverId, code, channel, report, reportUrl, saveNewReport, saveNewReport);
     } catch(error){
       logger.error(error)
     }
