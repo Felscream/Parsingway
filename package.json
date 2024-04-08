@@ -5,12 +5,12 @@
     "graphql-request": "^6.1.0",
     "js-joda": "^1.11.0",
     "object-hash": "^3.0.0",
-    "pino": "^8.19.0"
+    "pino": "^8.19.0",
+    "pino-pretty": "^11.0.0"
   },
   "type": "module",
   "devDependencies": {
-    "eslint": "^8.57.0",
-    "pino-pretty": "^11.0.0"
+    "eslint": "^8.57.0"
   },
   "scripts": {
     "start": "node --watch server.js"

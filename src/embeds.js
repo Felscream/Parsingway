@@ -18,8 +18,8 @@ export function createEmbed(report, reportUrl, withAutoRefreshMessage){
     .setThumbnail(getThumbnail(report.fights))
     .setURL(reportUrl)
     .addFields(
-        {name : 'Start', value:report.startTime.format(TIME_FORMATTER), inline: true},
-        {name : 'End', value:report.endTime.format(TIME_FORMATTER), inline: true}
+        {name : 'Start', value:`<t:${report.startTime.toEpochSecond()}>`, inline: true},
+        {name : 'End', value:`<t:${report.endTime.toEpochSecond()}>`, inline: true}
     )
     if(withAutoRefreshMessage){
         embed.setFooter({
@@ -43,7 +43,7 @@ export function createEmbed(report, reportUrl, withAutoRefreshMessage){
             const percentage = getBestPullInfo(bestPull, fights)
             const wipes = getWipes(fights)
             embed.addFields(
-                {name : `${monsterEmoji}** ${key}**`, value : `*${fights.length} ${fights.length > 1 ? 'pulls' : 'pull'} *`},
+                {name : `${monsterEmoji} **${key}**`, value : `*${fights.length} ${fights.length > 1 ? 'pulls' : 'pull'} *`},
                 {name: `Best ${bestPull.kill ? 'kill' : 'pull'}`, value:`**${bestPull.number}.** ${bestPull.duration.format(DURATION_FORMATTER)} - ${phase}${percentage}`, inline: true},
                 {name: "Wipes", value: `${wipes}`, inline:true},
             )
