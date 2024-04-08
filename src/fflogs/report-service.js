@@ -1,15 +1,15 @@
 import { Duration, Instant, ZoneId, ZonedDateTime } from "js-joda";
 import FflogsClient from "./fflogs-client.js";
 import { LocalTime } from "js-joda";
-import logger from "../../logger.js";
 import objectHash from "object-hash";
 
 
 
 class ReportService{
-    constructor(fflogsConfiguration){
+    constructor(fflogsConfiguration, maxEncounters){
         this.fflogsClient = new FflogsClient(fflogsConfiguration)
         this.reportsPerServers = {}
+        this.maxEncounters = maxEncounters
     }
 
     async init(){
@@ -53,13 +53,13 @@ class ReportService{
             fights[element.name].push(pull)
         });
         
-        return sortEncountersByPullNumber(fights);
+        return sortEncountersByPullNumber(fights, this.maxEncounters || 1);
     }
 }
 
-function sortEncountersByPullNumber(fights) {
+function sortEncountersByPullNumber(fights, maxEncounters) {
     const sortedFights = {};
-    while (Object.keys(fights).length > 0) {
+    while (Object.keys(fights).length > 0 && Object.keys(sortedFights).length < maxEncounters) {
         const encounter = getEncounterWithMostPulls(fights);
         sortedFights[encounter.name] = fights[encounter.name];
         delete fights[encounter.name];

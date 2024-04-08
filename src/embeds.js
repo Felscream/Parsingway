@@ -3,10 +3,8 @@ import { DateTimeFormatter } from "js-joda";
 import encounterThumbnails from "../resources/encounter_thumbail.json" assert {type: 'json'}
 import { getEncounterWithMostPulls } from "./fflogs/report-service.js";
 
-const TIME_FORMATTER = DateTimeFormatter.ofPattern('dd/MM/yyyy HH:mm');
 const DURATION_FORMATTER = DateTimeFormatter.ofPattern('m:ss');
-const empty = '\u200B';
-const KILL_COLOR = "#95ed5e"
+const KILL_COLOR = "#26a016"
 const WIPE_COLOR = "#d8532b"
 const monsterEmoji = "<:encounter:1226088953480740920>"
 const defaultThumbnailUrl = "https://xivapi.com/img-misc/chat_messengericon_raids.png";

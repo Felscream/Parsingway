@@ -93,7 +93,7 @@ class ServerReport{
 
 const token = config.get('token')
 const parsingway = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
-const reportService = new ReportService(config.get("fflogs"))
+const reportService = new ReportService(config.get("fflogs"), config.get("max_encounters"))
 reportService.init()
 
 const reportPerServer = {}

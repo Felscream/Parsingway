@@ -1,4 +1,4 @@
-import { GraphQLClient, gql } from "graphql-request";
+import { GraphQLClient } from "graphql-request";
 import { reportQuery } from "./queries.js";
 
 export default class FflogsClient{
