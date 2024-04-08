@@ -12,7 +12,7 @@ Only the 7 most played encounters in a report are displayed.
 
 Dungeons and small encounters are not displayed. 
 
-Reports are updated every minute. If a report has not been updated with a new trackable encounter for more than 1 hour and 30 minutes, the tracking will stop.
+Reports are updated every minuteto support live logging. If a report has not been updated with a new trackable encounter for more than 1 hour and 30 minutes, the tracking will stop.
 
 Sending a new report on the Discord server, or a new message on the channel with the latest report will also stop further updates.
 
