@@ -1,4 +1,4 @@
-import { ActivityType, Client, Events, GatewayIntentBits } from 'discord.js';
+import { ActivityType, Client, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
 import config from 'config';
 import {ReportService} from './src/fflogs/report-service.js';
 import { Duration, LocalDateTime, ZonedDateTime } from 'js-joda';
@@ -15,7 +15,8 @@ function sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh 
       reportPerServer[serverId].embedMessage.delete()
     }
   }
-  channel.send(createEmbed(report, reportUrl, withAutoRefreshMessage)).then(sentMessage => {
+  const embed = createEmbed(report, reportUrl, withAutoRefreshMessage);
+  channel.send({embeds: [embed], flags: MessageFlags.SuppressNotifications}).then(sentMessage => {
     const reportHash = report.getHash()
     const reportEndOfLife = LocalDateTime.now().plusSeconds(REPORT_TTL)
     if (reportPerServer.hasOwnProperty(serverId)) {
@@ -59,7 +60,7 @@ function updateReport(serverId){
       logger.info(`Report ${serverReport.reportCode} from server ${serverId} has not changed, no update required`)
       if(Duration.between(serverReport.endOfLife, ZonedDateTime.now()).seconds() > 0){
         logger.info(`No changes detected for a long period on report ${serverReport.reportCode} from server ${serverId}, it will be deleted`)
-        deleteReport(serverId);
+        deleteReport(serverId)
       }
       return
     }

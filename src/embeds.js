@@ -48,7 +48,7 @@ export function createEmbed(report, reportUrl, withAutoRefreshMessage){
             fieldCount += 3
         }
     }
-    return {embeds: [embed]}
+    return embed
 }
 
 function getBestPull(pulls){
