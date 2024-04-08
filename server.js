@@ -4,10 +4,12 @@ import {ReportService} from './src/fflogs/report-service.js';
 import { Duration, LocalDateTime, ZonedDateTime } from 'js-joda';
 import { createEmbed } from './src/embeds.js';
 import logger from "./logger.js"
+import ServerReport from './src/server-report.js';
 
 const REPORT_UPDATE_DELAY = config.get('report_update_delay'); // period between report updates
 const REPORT_TTL = config.get('report_TTL'); // how long we are waiting for a change in the log report before we delete it
 const OLD_REPORT_THESHOLD = config.get('old_report_threshold'); // how old should a report be before it is considered too old to be updated regularly
+const MAX_SERVER_COUNT = config.get('max_servers') // how many servers can have live logging
 
 function sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh = false, withAutoRefreshMessage = false, trackReport = false) {
   if (reportPerServer.hasOwnProperty(serverId)) {
@@ -28,7 +30,10 @@ function sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh 
       reportPerServer[serverId].reportHash = reportHash
       reportPerServer[serverId].reportEndTime = report.endTime
     } else if(trackReport){
+      logger.info(`Added report ${code} from ${serverId} to tracked reports`)
       reportPerServer[serverId] = new ServerReport(reportUrl, code, reportEndOfLife, report.endTime, sentMessage, channel.id,reportHash)
+    } else if(!trackReport  && Object.keys(reportPerServer).length >= MAX_SERVER_COUNT){
+      logger.warn("Cannot track more reports")
     }
 
     if(withAutoRefresh){
@@ -79,17 +84,8 @@ function updateReport(serverId){
   
 }
 
-class ServerReport{
-  constructor(reportUrl, reportCode, endOfLife, endTime, embedMessage, channelId, reportHash){
-    this.reportUrl = reportUrl
-    this.reportCode = reportCode
-    this.endOfLife = endOfLife
-    this.reportEndTime = endTime
-    this.embedMessage = embedMessage
-    this.channelId = channelId
-    this.reportHash = reportHash
-    this.timeoutId = null
-  }
+function canTrackReport(serverId) {
+  return reportPerServer.hasOwnProperty(serverId) || Object.keys(reportPerServer).length < MAX_SERVER_COUNT;
 }
 
 const token = config.get('token')
@@ -143,7 +139,7 @@ parsingway.on(Events.MessageCreate, message => {
   logger.info(`Received new report ${code} from ${serverId}`)
   reportService.synthesize(code).then((report) => {
     const timeSinceLastReportUpdate = Duration.between(report.endTime, ZonedDateTime.now());
-    const withAutoRefresh = timeSinceLastReportUpdate.seconds() < OLD_REPORT_THESHOLD
+    const withAutoRefresh = timeSinceLastReportUpdate.seconds() < OLD_REPORT_THESHOLD && canTrackReport(serverId)
     logger.info(`Auto refresh for report ${code} : ${withAutoRefresh}`)
     try{
       sendReport(serverId, code, channel, report, reportUrl, withAutoRefresh, withAutoRefresh, withAutoRefresh);
