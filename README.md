@@ -15,3 +15,5 @@ Dungeons and small encounters are not displayed.
 Reports are updated every minute. If a report has not been updated with a new trackable encounter for more than 1 hour and 30 minutes, the tracking will stop.
 
 Sending a new report on the Discord server, or a new message on the channel with the latest report will also stop further updates.
+
+When the a change is detectedi n a report, the bot will delete it's last message and rewrite it with updated info. (You should mute channels where your logs are tracked)
