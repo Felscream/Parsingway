@@ -39,7 +39,7 @@ class ReportService{
     }
 
     buildFights(report){
-        const pulls = report.fights.filter(fight => fight.difficulty >= 100);
+        const pulls = report.fights.filter(fight => fight.difficulty >= 100 || fight.difficulty === 11);
         const fights = {}
         const killsAndWipes = getKillAndWipeNumbers(pulls)
         pulls.forEach((element, index) => {
