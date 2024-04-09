@@ -2,7 +2,7 @@
 
 A small Discord bot that reads the most played encounters from an FFLogs report URL and displays a short summary in your discord channel.
 
-<img src="https://i.imgur.com/PITHrG7.png">
+<img src="https://i.imgur.com/yzHHSGa.png">
 
 The bot can only track one report per server.
 
