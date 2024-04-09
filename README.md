@@ -8,7 +8,7 @@ The bot can only track one report per server.
 
 Reports that have not been updated for more than 8 hours are not tracked.
 
-Only the 7 most played encounters in a report are displayed.
+Only the 3 most played encounters are displayed.
 
 Dungeons and small encounters are not displayed. 
 
