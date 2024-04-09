@@ -8,6 +8,7 @@ const TOTAL_DURATION_FORMATTER = DateTimeFormatter.ofPattern('H:mm:ss');
 const KILL_COLOR = "#8df407"
 const WIPE_COLOR = "#d8532b"
 const monsterEmoji = "<:encounter:1226088953480740920>"
+const battleEmoji = "<:battle:1227231447664820305>"
 const defaultThumbnailUrl = "https://xivapi.com/img-misc/chat_messengericon_raids.png"
 
 export function createEmbed(report, reportUrl, withAutoRefreshMessage){
@@ -43,7 +44,7 @@ export function createEmbed(report, reportUrl, withAutoRefreshMessage){
             const wipes = getWipes(fights)
             const totalDuration = getTotalDuration(fights)
             embed.addFields(
-                {name : `${monsterEmoji} **${key}**`, value : `*:crossed_swords: ${fights.length} ${fights.length > 1 ? 'pulls' : 'pull'} - :stopwatch: ${totalDuration}*`},
+                {name : `${monsterEmoji} **${key}**`, value : `*${battleEmoji} ${fights.length} ${fights.length > 1 ? 'pulls' : 'pull'}  :stopwatch: ${totalDuration}*`},
                 {name: `Best ${bestPull.kill ? 'kill' : 'pull'}`, value:`**${bestPull.number}.** ${bestPull.duration.format(DURATION_FORMATTER)} - ${phase}${percentage}`, inline: true},
                 {name: "Wipes", value: `${wipes}`, inline:true},
             )
