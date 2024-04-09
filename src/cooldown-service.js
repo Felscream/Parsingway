@@ -50,7 +50,7 @@ export default class CooldownService {
 }
 
 function clear () {
-  self.lastCallPerServer[serverId] = {}
+  self.lastCallPerServer = {}
 }
 
 class ServerCall {
