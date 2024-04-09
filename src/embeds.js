@@ -44,7 +44,7 @@ export function createEmbed(report, reportUrl, withAutoRefreshMessage){
             const wipes = getWipes(fights)
             const totalDuration = getTotalDuration(fights)
             embed.addFields(
-                {name : `${monsterEmoji} **${key}**`, value : `*${battleEmoji} ${fights.length} ${fights.length > 1 ? 'pulls' : 'pull'}  :stopwatch: ${totalDuration}*`},
+                {name : `${monsterEmoji} **${key}**`, value : `*:stopwatch: ${totalDuration} ${battleEmoji} ${fights.length} *`},
                 {name: `Best ${bestPull.kill ? 'kill' : 'pull'}`, value:`**${bestPull.number}.** ${bestPull.duration.format(DURATION_FORMATTER)} - ${phase}${percentage}`, inline: true},
                 {name: "Wipes", value: `${wipes}`, inline:true},
             )
