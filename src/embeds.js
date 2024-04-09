@@ -39,13 +39,13 @@ export function createEmbed(report, reportUrl, withAutoRefreshMessage){
                 return {embeds: [embed]}
             }
             const bestPull = getBestPull(fights)
-            const phase = bestPull.lastPhase !== 0 && !bestPull.kill ? `P${bestPull.lastPhase} ` : ''
+            const phase = bestPull.lastPhase !== 0 && !bestPull.kill ? `- P${bestPull.lastPhase} ` : ''
             const percentage = getBestPullInfo(bestPull, fights)
             const wipes = getWipes(fights)
             const totalDuration = getTotalDuration(fights)
             embed.addFields(
                 {name : `${monsterEmoji} **${key}**`, value : `*:stopwatch: ${totalDuration} ${battleEmoji} ${fights.length} *`},
-                {name: `Best ${bestPull.kill ? 'kill' : 'pull'}`, value:`**${bestPull.number}.** ${bestPull.duration.format(DURATION_FORMATTER)} - ${phase}${percentage}`, inline: true},
+                {name: `Best ${bestPull.kill ? 'kill' : 'pull'}`, value:`**${bestPull.number}.** ${bestPull.duration.format(DURATION_FORMATTER)} ${phase}${percentage}`, inline: true},
                 {name: "Wipes", value: `${wipes}`, inline:true},
             )
             fieldCount += 3
@@ -97,8 +97,7 @@ function getBestPullInfo(bestPull, pulls){
     if(!bestPull.kill){
         return `${bestPull.bossPercentage}%`
     }
-    const kills = getKills(pulls)
-    return `${kills} kill${kills > 1 ? 's':''}`
+    return ''
 }
 
 function getWipes(pulls){
