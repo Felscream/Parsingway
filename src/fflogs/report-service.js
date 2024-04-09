@@ -120,7 +120,6 @@ class Report{
     getHash(){
         return objectHash.sha1(this, { excludeKeys : key => key === "endTime" })
     }
-
 }
 
 class Pull{

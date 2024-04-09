@@ -89,10 +89,6 @@ function getBestPull(pulls){
     })
 }
 
-function getKills(pulls){
-    return pulls.filter(pull => pull.kill).length
-}
-
 function getBestPullInfo(bestPull, pulls){
     if(!bestPull.kill){
         return `${bestPull.bossPercentage}%`
