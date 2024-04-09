@@ -47,9 +47,8 @@ class ReportService{
                 fights[element.name] = []
             }
             const encounterNumber = getPullNumber(killsAndWipes, index, element.name)
-            const duration = LocalTime.ofInstant(Instant.ofEpochMilli(element.endTime - element.startTime))
-            const durationSeconds = Duration.between(Instant.ofEpochMilli(element.startTime), Instant.ofEpochMilli(element.endTime)).seconds()
-            const pull = new Pull(element.bossPercentage, element.fightPercentage, element.kill, duration, element.lastPhase, encounterNumber, durationSeconds, element.encounterID)
+            const duration = LocalTime.ofInstant(Instant.ofEpochMilli(element.endTime - element.startTime), ZoneId.UTC)
+            const pull = new Pull(element.bossPercentage, element.fightPercentage, element.kill, duration, element.lastPhase, encounterNumber, element.encounterID)
             fights[element.name].push(pull)
         });
         
@@ -125,12 +124,11 @@ class Report{
 }
 
 class Pull{
-    constructor(bossPercentage, fightPercentage, isKill, duration, lastPhase, number, seconds, encounterId){
+    constructor(bossPercentage, fightPercentage, isKill, duration, lastPhase, number, encounterId){
         this.bossPercentage = bossPercentage
         this.fightPercentage = fightPercentage
         this.kill = isKill
         this.duration = duration
-        this.durationSeconds = seconds
         this.lastPhase = lastPhase
         this.number = number
         this.encounterId = encounterId
