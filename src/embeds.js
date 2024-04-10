@@ -32,7 +32,7 @@ export function createEmbed (report, reportUrl, withAutoRefreshMessage) {
     )
   if (withAutoRefreshMessage) {
     embed.setFooter({
-      text: 'This report is updated every minute. Sending a new report on this server, or a new message on this channel will stop it.'
+      text: 'This report is updated every minute.'
     })
   } else {
     embed.setFooter({
@@ -41,7 +41,7 @@ export function createEmbed (report, reportUrl, withAutoRefreshMessage) {
   }
   if (Object.entries(report.fights).length === 0) {
     embed.addFields({
-      name: `No encounter detected yet`,
+      name: `No encounters detected yet`,
       value: 'Come back later !'
     })
   } else {
