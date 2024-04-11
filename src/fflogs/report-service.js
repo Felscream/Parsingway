@@ -104,7 +104,7 @@ function getHighestDifficultyFights (fights) {
 
     if (
       highestDifficulty === -1 ||
-      (highestDifficulty < 100 && highestDifficulty !== 11)
+      (highestDifficulty !== 11 && highestDifficulty < 100)
     ) {
       continue
     }
