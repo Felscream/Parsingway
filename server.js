@@ -12,6 +12,7 @@ import { createEmbed } from './src/embeds.js'
 import logger from './logger.js'
 import ServerReport from './src/server-report.js'
 import CooldownService from './src/cooldown-service.js'
+import help from './src/commands/utility/help.js'
 
 const REPORT_UPDATE_DELAY = config.get('report_update_delay') // period between report updates
 const REPORT_TTL = config.get('report_TTL') // how long we are waiting for a change in the log report before we delete it
@@ -34,6 +35,11 @@ const reportMatcher =
   /(https:\/\/www.fflogs.com\/reports\/(?:compare\/)?([A-za-z0-9]{12,16}))[#/]?/
 reportService.init()
 
+function registerCommands (client) {
+  client.commands = new Map()
+  client.commands.set(help.data.name, help)
+}
+
 function sendReport (
   serverId,
   code,
@@ -45,10 +51,10 @@ function sendReport (
 ) {
   if (reportPerServer.hasOwnProperty(serverId)) {
     if (
-      reportPerServer[serverId].reportCode === code &&
-      reportPerServer[serverId].channelId === channel.id
+      reportPerServer.get(serverId).reportCode === code &&
+      reportPerServer.get(serverId).channelId === channel.id
     ) {
-      reportPerServer[serverId].embedMessage.delete()
+      reportPerServer.get(serverId).embedMessage.delete()
     }
   }
   const embed = createEmbed(report, code, reportUrl, withAutoRefreshMessage)
@@ -84,16 +90,19 @@ function setServerReport (
       return
     }
     if (saveNewReport) {
-      reportPerServer[serverId] = new ServerReport(
-        reportUrl,
-        code,
-        reportEndOfLife,
-        report.endTime,
-        sentMessage,
-        channel.id,
-        reportHash
+      reportPerServer.set(
+        serverId,
+        new ServerReport(
+          reportUrl,
+          code,
+          reportEndOfLife,
+          report.endTime,
+          sentMessage,
+          channel.id,
+          reportHash
+        )
       )
-      reportPerServer[serverId].timeoutId = setInterval(
+      reportPerServer.get(serverId).timeoutId = setInterval(
         updateReport,
         REPORT_UPDATE_DELAY,
         serverId
@@ -115,26 +124,28 @@ function updateServerReport (
   reportHash,
   report
 ) {
-  reportPerServer[serverId].reportUrl = reportUrl
-  reportPerServer[serverId].endOfLife = reportEndOfLife
-  reportPerServer[serverId].embedMessage = sentMessage
-  reportPerServer[serverId].reportCode = code
-  reportPerServer[serverId].channelId = channel.id
-  reportPerServer[serverId].reportHash = reportHash
-  reportPerServer[serverId].reportEndTime = report.endTime
+  const serverReport = reportPerServer.get(serverId)
+  serverReport.reportUrl = reportUrl
+  serverReport.endOfLife = reportEndOfLife
+  serverReport.embedMessage = sentMessage
+  serverReport.reportCode = code
+  serverReport.channelId = channel.id
+  serverReport.reportHash = reportHash
+  serverReport.reportEndTime = report.endTime
 }
 
 function deleteReport (serverId) {
-  if (reportPerServer.hasOwnProperty(serverId)) {
-    const reportCode = reportPerServer[serverId].reportCode
+  if (reportPerServer.has(serverId)) {
+    const serverReport = reportPerServer.get(serverId)
+    const reportCode = serverReport.reportCode
     logger.info(`Deleting report ${reportCode} from server ${serverId}`)
-    clearInterval(reportPerServer[serverId].timeoutId)
-    delete reportPerServer[serverId]
+    clearInterval(serverReport.timeoutId)
+    reportPerServer.delete(serverId)
   }
 }
 
 function updateReport (serverId) {
-  if (!reportPerServer.hasOwnProperty(serverId)) {
+  if (!reportPerServer.has(serverId)) {
     return
   }
 
@@ -145,7 +156,7 @@ function updateReport (serverId) {
     return
   }
 
-  const serverReport = reportPerServer[serverId]
+  const serverReport = reportPerServer.get(serverId)
 
   reportService.synthesize(serverReport.reportCode).then(
     newReport => {
@@ -200,7 +211,7 @@ function canTrackReport (serverId) {
   )
 }
 
-const reportPerServer = {}
+const reportPerServer = new Map()
 const token = config.get('token')
 const parsingway = new Client({
   intents: [
@@ -209,6 +220,7 @@ const parsingway = new Client({
     GatewayIntentBits.MessageContent
   ]
 })
+registerCommands(parsingway)
 
 parsingway.once(Events.ClientReady, () => {
   logger.info(`Logged in as ${parsingway.user.tag}!`)
@@ -233,8 +245,8 @@ parsingway.on(Events.MessageCreate, message => {
   if (!match) {
     if (message.embeds.length === 0 || !message.embeds[0].data.url) {
       if (
-        reportPerServer.hasOwnProperty(serverId) &&
-        reportPerServer[serverId].channelId === message.channelId
+        reportPerServer.has(serverId) &&
+        reportPerServer.get(serverId).channelId === message.channelId
       ) {
         deleteReport(serverId)
       }
@@ -243,8 +255,8 @@ parsingway.on(Events.MessageCreate, message => {
     match = matcher.exec(message.embeds[0].data.url)
     if (!match) {
       if (
-        reportPerServer.hasOwnProperty(serverId) &&
-        reportPerServer[serverId].channelId === message.channelId
+        reportPerServer.has(serverId) &&
+        reportPerServer.get(serverId).channelId === message.channelId
       ) {
         deleteReport(serverId)
       }
@@ -262,13 +274,15 @@ parsingway.on(Events.MessageCreate, message => {
   const reportUrl = match[1].replace('compare/', '')
   const code = match[2]
   if (
-    reportPerServer.hasOwnProperty(serverId) &&
-    reportPerServer[serverId].timeoutId
+    reportPerServer.has(serverId) &&
+    reportPerServer.get(serverId).timeoutId
   ) {
     logger.info(
-      `Clearing previous report auto refresh for report ${reportPerServer[serverId].reportCode} on server ${serverId}`
+      `Clearing previous report auto refresh for report ${
+        reportPerServer.get(serverId).reportCode
+      } on server ${serverId}`
     )
-    clearInterval(reportPerServer[serverId].timeoutId)
+    clearInterval(reportPerServer.get(serverId).timeoutId)
   }
   logger.info(`Received new report ${code} from ${serverId}`)
   reportService.synthesize(code).then(
@@ -299,6 +313,32 @@ parsingway.on(Events.MessageCreate, message => {
       logger.error(reject)
     }
   )
+})
+
+parsingway.on(Events.InteractionCreate, async interaction => {
+  if (!interaction.isChatInputCommand()) return
+  const command = interaction.client.commands.get(interaction.commandName)
+  if (!command) {
+    console.error(`No command matching ${interaction.commandName} was found.`)
+    return
+  }
+
+  try {
+    await command.execute(interaction)
+  } catch (error) {
+    console.error(error)
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp({
+        content: 'There was an error while executing this command!',
+        ephemeral: true
+      })
+    } else {
+      await interaction.reply({
+        content: 'There was an error while executing this command!',
+        ephemeral: true
+      })
+    }
+  }
 })
 
 parsingway.login(token)

@@ -6,7 +6,6 @@ import objectHash from 'object-hash'
 class ReportService {
   constructor (fflogsConfiguration, maxEncounters) {
     this.fflogsClient = new FflogsClient(fflogsConfiguration)
-    this.reportsPerServers = {}
     this.maxEncounters = maxEncounters
   }
 
@@ -51,11 +50,11 @@ class ReportService {
       this.maxEncounters || 1
     )
 
-    const fights = {}
+    const fights = new Map()
     const killsAndWipes = getKillAndWipeNumbers(sortedEncounters)
-    for (let [name, rawPulls] of Object.entries(sortedEncounters)) {
-      if (!fights.hasOwnProperty(name)) {
-        fights[name] = []
+    for (let [name, rawPulls] of sortedEncounters.entries()) {
+      if (!fights.has(name)) {
+        fights.set(name, [])
       }
       rawPulls.forEach((rawPull, index) => {
         const encounterNumber = getPullNumber(killsAndWipes, index, name)
@@ -73,7 +72,7 @@ class ReportService {
           rawPull.fight.encounterID,
           rawPull.fightNumber
         )
-        fights[name].push(pull)
+        fights.get(name).push(pull)
       })
     }
     return fights
@@ -81,20 +80,20 @@ class ReportService {
 }
 
 function getHighestDifficultyFights (fights) {
-  const pullsPerEncounters = {}
+  const pullsPerEncounters = new Map()
   fights.forEach((encounter, index) => {
-    if (!pullsPerEncounters.hasOwnProperty(encounter.name)) {
-      pullsPerEncounters[encounter.name] = []
+    if (!pullsPerEncounters.has(encounter.name)) {
+      pullsPerEncounters.set(encounter.name, [])
     }
 
-    pullsPerEncounters[encounter.name].push({
+    pullsPerEncounters.get(encounter.name).push({
       fight: encounter,
       fightNumber: index + 1
     })
   })
 
-  const highestDifficultyEncounters = {}
-  for (let [encounterName, encounters] of Object.entries(pullsPerEncounters)) {
+  const highestDifficultyEncounters = new Map()
+  for (let [encounterName, encounters] of pullsPerEncounters.entries()) {
     let highestDifficulty = -1
     for (let encounter of encounters) {
       if (encounter.fight.difficulty > highestDifficulty) {
@@ -114,24 +113,23 @@ function getHighestDifficultyFights (fights) {
         (highestDifficulty >= 100 || highestDifficulty === 11)
     )
 
-    if (!highestDifficultyEncounters.hasOwnProperty(encounterName)) {
-      highestDifficultyEncounters[encounterName] = []
+    if (!highestDifficultyEncounters.has(encounterName)) {
+      highestDifficultyEncounters.set(encounterName, [])
     }
-    highestDifficultyEncounters[encounterName] =
-      highestDifficultyEncounters[encounterName].concat(difficultEncounters)
+    highestDifficultyEncounters.set(
+      encounterName,
+      highestDifficultyEncounters.get(encounterName).concat(difficultEncounters)
+    )
   }
   return highestDifficultyEncounters
 }
 
 function sortEncountersByPullNumber (fights, maxEncounters) {
-  const sortedFights = {}
-  while (
-    Object.keys(fights).length > 0 &&
-    Object.keys(sortedFights).length < maxEncounters
-  ) {
+  const sortedFights = new Map()
+  while (fights.size > 0 && sortedFights.size < maxEncounters) {
     const encounter = getEncounterWithMostPulls(fights)
-    sortedFights[encounter.name] = fights[encounter.name]
-    delete fights[encounter.name]
+    sortedFights.set(encounter.name, fights.get(encounter.name))
+    fights.delete(encounter.name)
   }
   return sortedFights
 }
@@ -140,7 +138,7 @@ function getEncounterWithMostPulls (fights) {
   let encounterId = -1
   let pullCount = -1
   let encounterName = ''
-  for (let [key, fight] of Object.entries(fights)) {
+  for (let [key, fight] of fights.entries()) {
     if (fight.length > pullCount) {
       pullCount = fight.length
       encounterId = fight[0].fight.encounterID
@@ -151,20 +149,20 @@ function getEncounterWithMostPulls (fights) {
 }
 
 function getKillAndWipeNumbers (pulls) {
-  const kills = {}
-  const wipes = {}
-  for (let [name, encounters] of Object.entries(pulls)) {
-    if (!kills.hasOwnProperty(name)) {
-      kills[name] = []
+  const kills = new Map()
+  const wipes = new Map()
+  for (let [name, encounters] of pulls.entries()) {
+    if (!kills.has(name)) {
+      kills.set(name, [])
     }
-    if (!wipes.hasOwnProperty(name)) {
-      wipes[name] = []
+    if (!wipes.has(name)) {
+      wipes.set(name, [])
     }
     encounters.forEach((encounter, index) => {
       if (encounter.fight.kill) {
-        kills[name].push(index + 1)
+        kills.get(name).push(index + 1)
       } else {
-        wipes[name].push(index + 1)
+        wipes.get(name).push(index + 1)
       }
     })
   }
@@ -173,9 +171,9 @@ function getKillAndWipeNumbers (pulls) {
 }
 
 function getPullNumber (killAndWipes, curIndex, encounter) {
-  let killOrWipeNumber = killAndWipes.wipes[encounter].indexOf(curIndex + 1)
+  let killOrWipeNumber = killAndWipes.wipes.get(encounter).indexOf(curIndex + 1)
   if (killOrWipeNumber === -1) {
-    killOrWipeNumber = killAndWipes.kills[encounter].indexOf(curIndex + 1)
+    killOrWipeNumber = killAndWipes.kills.get(encounter).indexOf(curIndex + 1)
   }
 
   return killOrWipeNumber + 1

@@ -50,14 +50,14 @@ export function createEmbed (
     })
   }
 
-  if (Object.entries(report.fights).length === 0) {
+  if (report.fights.size === 0) {
     embed.addFields({
       name: `No encounters detected yet`,
       value: 'Come back later !'
     })
   } else {
     let fieldCount = 2
-    for (let [key, fights] of Object.entries(report.fights)) {
+    for (let [key, fights] of report.fights.entries()) {
       if (fieldCount + 3 > 25) {
         return { embeds: [embed] }
       }
@@ -65,7 +65,7 @@ export function createEmbed (
       const bestPullUrl = buildBestPullUrl(reportUrl, bestPull)
       const bestPullAnalysisUrl = buildAnalysisUrl(reportCode, bestPull)
       const phase = buildPhaseText(bestPull)
-      const percentage = getBestPullInfo(bestPull, fights)
+      const percentage = getBestPullInfo(bestPull)
       const wipes = getWipes(fights)
       const totalDuration = getTotalDuration(fights)
       embed.addFields(
@@ -138,7 +138,7 @@ function getBestPull (pulls) {
   })
 }
 
-function getBestPullInfo (bestPull, pulls) {
+function getBestPullInfo (bestPull) {
   if (!bestPull.kill) {
     return `${bestPull.bossPercentage}%`
   }
@@ -161,10 +161,10 @@ function hasKillOnReport (fights) {
 }
 
 function getThumbnail (fights) {
-  if (Object.keys(fights).length === 0) {
+  if (fights.size === 0) {
     return DEFAULT_THUMBNAIL_URL
   }
-  const mostPlayedEncounterId = fights[Object.keys(fights)[0]][0].encounterID
+  const mostPlayedEncounterId = fights.values().next().value[0].encounterID
   if (encounterThumbnails.hasOwnProperty(mostPlayedEncounterId)) {
     return encounterThumbnails[mostPlayedEncounterId].thumbnail
   }

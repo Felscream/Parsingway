@@ -7,7 +7,7 @@ const HOUR_IN_MILLI = 3600000
 export default class CooldownService {
   constructor (cooldown, callCountAlertThreshold) {
     this.cooldown = cooldown
-    this.lastCallPerServer = {}
+    this.lastCallPerServer = new Map()
     this.callCountAlertThreshold = callCountAlertThreshold
     self = this
 
@@ -16,22 +16,25 @@ export default class CooldownService {
   }
 
   canGetReport (serverId) {
-    if (!this.lastCallPerServer.hasOwnProperty(serverId)) {
+    if (!this.lastCallPerServer.has(serverId)) {
       return true
     }
 
     if (
-      this.lastCallPerServer[serverId].callCount >= this.callCountAlertThreshold
+      this.lastCallPerServer.get(serverId).callCount >=
+      this.callCountAlertThreshold
     ) {
       logger.warn(
-        `Server ${serverId} has had ${this.lastCallPerServer[serverId].callCount} calls in the last hour`
+        `Server ${serverId} has had ${
+          this.lastCallPerServer.get(serverId).callCount
+        } calls in the last hour`
       )
       return false
     }
 
     if (
       Duration.between(
-        this.lastCallPerServer[serverId].lastCall,
+        this.lastCallPerServer.get(serverId).lastCall,
         LocalDateTime.now()
       ).seconds() >= this.cooldown
     ) {
@@ -41,16 +44,16 @@ export default class CooldownService {
   }
 
   registerServerCall (serverId) {
-    if (this.lastCallPerServer.hasOwnProperty(serverId)) {
-      this.lastCallPerServer[serverId].newCall()
+    if (this.lastCallPerServer.has(serverId)) {
+      this.lastCallPerServer.get(serverId).newCall()
     } else {
-      this.lastCallPerServer[serverId] = new ServerCall()
+      this.lastCallPerServer.set(serverId, new ServerCall())
     }
   }
 }
 
 function clear () {
-  self.lastCallPerServer = {}
+  self.lastCallPerServer = new Map()
 }
 
 class ServerCall {

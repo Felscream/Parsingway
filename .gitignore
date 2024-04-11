@@ -133,3 +133,4 @@ config/
 .vscode
 package-lock.json
 *.code-workspace
+command-register.js
