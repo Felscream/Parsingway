@@ -84,7 +84,7 @@ export function createEmbed (
         },
         {
           name: EMPTY,
-          value: `[Analysis ${ANALYSIS_EMOJI}](${bestPullAnalysisUrl})`,
+          value: `[${ANALYSIS_EMOJI}](${bestPullAnalysisUrl})`,
           inline: true
         },
         { name: 'Wipes', value: `${wipes}`, inline: true }
