@@ -75,9 +75,7 @@ export function createEmbed (
         },
         {
           name: `Best ${bestPull.kill ? 'kill' : 'pull'}`,
-          value: `**[${
-            bestPull.killOrWipeNumber
-          }.](${bestPullUrl})** ${bestPull.duration.format(
+          value: `**${bestPull.killOrWipeNumber}.** ${bestPull.duration.format(
             DURATION_FORMATTER
           )} ${phase}${percentage}`,
           inline: true
