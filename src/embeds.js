@@ -9,10 +9,13 @@ const WIPE_COLOR = '#d8532b'
 const MONSTER_EMOJI = '<:encounter:1226088953480740920>'
 const BATTLE_EMOJI = '<:battle:1227231447664820305>'
 const ANALYSIS_EMOJI = '<:analysis:1227772427845763173>'
+const PLAY_DEAD_EMOJI = '<:playdead:1227921518487666718>'
+const FFLOGS_EMOJI = '<:fflogs:1227922011322449920>'
 const DEFAULT_THUMBNAIL_URL =
   'https://xivapi.com/img-misc/chat_messengericon_raids.png'
 const XIV_ANALYSIS_URL = 'https://xivanalysis.com/fflogs'
 const EMPTY = '\u200B'
+const SPACER = `${EMPTY} ${EMPTY} ${EMPTY} ${EMPTY}`
 
 export function createEmbed (
   report,
@@ -61,17 +64,14 @@ export function createEmbed (
       const bestPull = getBestPull(fights)
       const bestPullUrl = buildBestPullUrl(reportUrl, bestPull)
       const bestPullAnalysisUrl = buildAnalysisUrl(reportCode, bestPull)
-      const phase =
-        bestPull.lastPhase !== 0 && !bestPull.kill
-          ? `- P${bestPull.lastPhase} `
-          : ''
+      const phase = buildPhaseText(bestPull)
       const percentage = getBestPullInfo(bestPull, fights)
       const wipes = getWipes(fights)
       const totalDuration = getTotalDuration(fights)
       embed.addFields(
         {
           name: `${MONSTER_EMOJI} **${key}**`,
-          value: `*:stopwatch: ${totalDuration} ${BATTLE_EMOJI} ${fights.length} *`
+          value: `*:stopwatch: ${totalDuration} ${SPACER} ${BATTLE_EMOJI} ${fights.length} ${SPACER} ${PLAY_DEAD_EMOJI} ${wipes}*`
         },
         {
           name: `Best ${bestPull.kill ? 'kill' : 'pull'}`,
@@ -83,16 +83,26 @@ export function createEmbed (
           inline: true
         },
         {
-          name: EMPTY,
-          value: `[${ANALYSIS_EMOJI}](${bestPullAnalysisUrl})`,
+          name: 'Links',
+          value: `[${FFLOGS_EMOJI}](${bestPullUrl}) [${ANALYSIS_EMOJI}](${bestPullAnalysisUrl})`,
           inline: true
-        },
-        { name: 'Wipes', value: `${wipes}`, inline: true }
+        }
       )
       fieldCount += 3
     }
   }
   return embed
+}
+
+function buildPhaseText (bestPull) {
+  if (bestPull.lastPhase !== 0 && !bestPull.kill) {
+    return `- P${bestPull.lastPhase} `
+  }
+  if (!bestPull.kill) {
+    return '- '
+  }
+
+  return ''
 }
 
 function getTotalDuration (fights) {
