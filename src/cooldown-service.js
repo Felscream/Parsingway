@@ -32,15 +32,12 @@ export default class CooldownService {
       return false
     }
 
-    if (
+    return (
       Duration.between(
         this.lastCallPerServer.get(serverId).lastCall,
         LocalDateTime.now()
       ).seconds() >= this.cooldown
-    ) {
-      return true
-    }
-    return false
+    )
   }
 
   registerServerCall (serverId) {
