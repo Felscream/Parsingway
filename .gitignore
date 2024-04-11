@@ -134,3 +134,4 @@ config/
 package-lock.json
 *.code-workspace
 command-register.js
+discord-bot.js

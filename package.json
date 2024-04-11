@@ -10,6 +10,7 @@
   },
   "type": "module",
   "devDependencies": {
+    "discordbotlist": "^1.1.1",
     "eslint": "^8.57.0"
   },
   "scripts": {
