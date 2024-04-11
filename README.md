@@ -5,7 +5,6 @@ Parsingway is a small bot that generates a summary of the most played encounters
 It's a useful tool for your FFXIV static if you have a dedicated log channel to track your progress through a raid tier, and to get an idea of the content of your reports without opening them.
 
 <img src="https://i.imgur.com/52eRX0o.png">
-<img src="https://i.imgur.com/JgB1mF0.png">
 
 For each encounter, Parsingway will indicate :
 
