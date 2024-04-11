@@ -49,7 +49,7 @@ function sendReport (
   saveNewReport = false,
   withAutoRefreshMessage = false
 ) {
-  if (reportPerServer.hasOwnProperty(serverId)) {
+  if (reportPerServer.has(serverId)) {
     if (
       reportPerServer.get(serverId).reportCode === code &&
       reportPerServer.get(serverId).channelId === channel.id
@@ -76,7 +76,7 @@ function setServerReport (
   return sentMessage => {
     const reportHash = report.getHash()
     const reportEndOfLife = LocalDateTime.now().plusSeconds(REPORT_TTL)
-    if (reportPerServer.hasOwnProperty(serverId)) {
+    if (reportPerServer.has(serverId)) {
       updateServerReport(
         serverId,
         reportUrl,
@@ -205,7 +205,7 @@ function updateReport (serverId) {
 
 function canTrackReport (serverId) {
   return (
-    reportPerServer.hasOwnProperty(serverId) ||
+    reportPerServer.has(serverId) ||
     Object.keys(reportPerServer).length < MAX_SERVER_COUNT
   )
 }
