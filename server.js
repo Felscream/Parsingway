@@ -205,8 +205,7 @@ function updateReport (serverId) {
 
 function canTrackReport (serverId) {
   return (
-    reportPerServer.has(serverId) ||
-    Object.keys(reportPerServer).length < MAX_SERVER_COUNT
+    reportPerServer.has(serverId) || reportPerServer.size < MAX_SERVER_COUNT
   )
 }
 

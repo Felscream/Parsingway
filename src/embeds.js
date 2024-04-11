@@ -150,7 +150,7 @@ function getWipes (pulls) {
 }
 
 function hasKillOnReport (fights) {
-  for (let [key, fight] of Object.entries(fights)) {
+  for (let fight of fights.values()) {
     for (let i = 0; i < fight.length; i++) {
       if (fight[i].kill) {
         return true
