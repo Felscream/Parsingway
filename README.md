@@ -1,19 +1,31 @@
 # Parsingway - FFLogs report previewer for Discord
 
-A small Discord bot that reads the most played encounters from an FFLogs report URL and displays a short summary in your discord channel.
+Parsingway is a small bot that generates a summary of the most played encounters from an FFLogs report.
 
-<img src="https://i.imgur.com/yzHHSGa.png">
+It's a useful tool for your FFXIV static if you have a dedicated log channel to track your progress through a raid tier, and to get an idea of the content of your reports without opening them.
 
-The bot can only track one report per server.
+<img src="https://i.imgur.com/52eRX0o.png">
+<img src="https://i.imgur.com/JgB1mF0.png">
 
-Reports that have not been updated for more than 8 hours are not tracked.
+For each encounter, Parsingway will indicate :
 
-Only the 3 most played encounters are displayed.
+- the amount of time spent in combat
+- the amount of pulls
+- the amount of wipe
+- the best pull (boss remaining HP) or the best kill (lowest kill time)
+- links to the best pull on FFLogs and XIVAnalysis
 
-Dungeons and small encounters are not displayed. 
+Dungeons and small encounters are not displayed
 
-Reports are updated every minute to support live logging. If a report has not been updated with a new trackable encounter for more than 1 hour and 30 minutes, the tracking will stop.
+### Live logging
 
-Sending a new report on the Discord server, or a new message on the channel with the latest report will also stop further updates.
+Parsingway supports live logging by checking every minute if a report has been updated on FFLogs. If changes are detected, the previous summary is deleted, and a new one is rewritten.
 
-When the a change is detectedi n a report, the bot will delete it's last message and rewrite it with updated info. (You should mute channels where your logs are tracked)
+Reports are tracked automatically if they have been updated in the last 8 hours 
+
+Limits :
+- Only one report per server can be tracked for live logging
+- Sending a new message on the channel with the currently tracked report, or a new report on the discord server will interrupt the previous report tracking.
+- Tracking stops if no updates have been detected for more than 1 hour and 30 minutes
+- Due to API limitations, only 80 reports can be live tracked at once. The limit may increase later.
+
