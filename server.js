@@ -20,6 +20,20 @@ const MAX_SERVER_COUNT = config.get('max_servers') // how many servers can have 
 const CALL_COOLDOWN = config.get('call_cooldown')
 const CALL_COUNT_ALERT_THRESHOLD = config.get('call_per_hour_alert_threshold')
 
+const reportService = new ReportService(
+  config.get('fflogs'),
+  config.get('max_encounters')
+)
+
+const cooldownService = new CooldownService(
+  CALL_COOLDOWN,
+  CALL_COUNT_ALERT_THRESHOLD
+)
+
+const reportMatcher =
+  /(https:\/\/www.fflogs.com\/reports\/(?:compare\/)?([A-za-z0-9]{12,16}))[#/]?/
+reportService.init()
+
 function sendReport (
   serverId,
   code,
@@ -37,7 +51,7 @@ function sendReport (
       reportPerServer[serverId].embedMessage.delete()
     }
   }
-  const embed = createEmbed(report, reportUrl, withAutoRefreshMessage)
+  const embed = createEmbed(report, code, reportUrl, withAutoRefreshMessage)
   channel
     .send({ embeds: [embed], flags: MessageFlags.SuppressNotifications })
     .then(
@@ -196,19 +210,6 @@ const parsingway = new Client({
   ]
 })
 
-const reportService = new ReportService(
-  config.get('fflogs'),
-  config.get('max_encounters')
-)
-
-const cooldownService = new CooldownService(
-  CALL_COOLDOWN,
-  CALL_COUNT_ALERT_THRESHOLD
-)
-
-const reportMatcher = /(https:\/\/www.fflogs.com\/reports\/([A-za-z0-9]+))#?/
-reportService.init()
-
 parsingway.once(Events.ClientReady, () => {
   logger.info(`Logged in as ${parsingway.user.tag}!`)
   parsingway.user.setPresence({
@@ -258,7 +259,7 @@ parsingway.on(Events.MessageCreate, message => {
     return
   }
 
-  const reportUrl = match[1]
+  const reportUrl = match[1].replace('compare/', '')
   const code = match[2]
   if (
     reportPerServer.hasOwnProperty(serverId) &&

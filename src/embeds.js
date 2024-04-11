@@ -1,18 +1,25 @@
 import { EmbedBuilder } from 'discord.js'
 import { DateTimeFormatter, Duration, LocalTime } from 'js-joda'
 import encounterThumbnails from '../resources/encounter_thumbail.json' assert { type: 'json' }
-import { getEncounterWithMostPulls } from './fflogs/report-service.js'
 
 const DURATION_FORMATTER = DateTimeFormatter.ofPattern('m:ss')
 const TOTAL_DURATION_FORMATTER = DateTimeFormatter.ofPattern('H:mm:ss')
 const KILL_COLOR = '#8df407'
 const WIPE_COLOR = '#d8532b'
-const monsterEmoji = '<:encounter:1226088953480740920>'
-const battleEmoji = '<:battle:1227231447664820305>'
-const defaultThumbnailUrl =
+const MONSTER_EMOJI = '<:encounter:1226088953480740920>'
+const BATTLE_EMOJI = '<:battle:1227231447664820305>'
+const ANALYSIS_EMOJI = '<:analysis:1227772427845763173>'
+const DEFAULT_THUMBNAIL_URL =
   'https://xivapi.com/img-misc/chat_messengericon_raids.png'
+const XIV_ANALYSIS_URL = 'https://xivanalysis.com/fflogs'
+const EMPTY = '\u200B'
 
-export function createEmbed (report, reportUrl, withAutoRefreshMessage) {
+export function createEmbed (
+  report,
+  reportCode,
+  reportUrl,
+  withAutoRefreshMessage
+) {
   const embed = new EmbedBuilder()
     .setTitle(report.title || 'Report')
     .setColor(hasKillOnReport(report.fights) ? KILL_COLOR : WIPE_COLOR)
@@ -39,6 +46,7 @@ export function createEmbed (report, reportUrl, withAutoRefreshMessage) {
       text: 'This report will not be updated.'
     })
   }
+
   if (Object.entries(report.fights).length === 0) {
     embed.addFields({
       name: `No encounters detected yet`,
@@ -51,6 +59,8 @@ export function createEmbed (report, reportUrl, withAutoRefreshMessage) {
         return { embeds: [embed] }
       }
       const bestPull = getBestPull(fights)
+      const bestPullUrl = buildBestPullUrl(reportUrl, bestPull)
+      const bestPullAnalysisUrl = buildAnalysisUrl(reportCode, bestPull)
       const phase =
         bestPull.lastPhase !== 0 && !bestPull.kill
           ? `- P${bestPull.lastPhase} `
@@ -60,14 +70,21 @@ export function createEmbed (report, reportUrl, withAutoRefreshMessage) {
       const totalDuration = getTotalDuration(fights)
       embed.addFields(
         {
-          name: `${monsterEmoji} **${key}**`,
-          value: `*:stopwatch: ${totalDuration} ${battleEmoji} ${fights.length} *`
+          name: `${MONSTER_EMOJI} **${key}**`,
+          value: `*:stopwatch: ${totalDuration} ${BATTLE_EMOJI} ${fights.length} *`
         },
         {
           name: `Best ${bestPull.kill ? 'kill' : 'pull'}`,
-          value: `**${bestPull.number}.** ${bestPull.duration.format(
+          value: `**[${
+            bestPull.killOrWipeNumber
+          }.](${bestPullUrl})** ${bestPull.duration.format(
             DURATION_FORMATTER
           )} ${phase}${percentage}`,
+          inline: true
+        },
+        {
+          name: EMPTY,
+          value: `[Analysis ${ANALYSIS_EMOJI}](${bestPullAnalysisUrl})`,
           inline: true
         },
         { name: 'Wipes', value: `${wipes}`, inline: true }
@@ -136,9 +153,22 @@ function hasKillOnReport (fights) {
 }
 
 function getThumbnail (fights) {
-  const mostPlayedEncounterId = getEncounterWithMostPulls(fights).id
+  if (Object.keys(fights).length === 0) {
+    return DEFAULT_THUMBNAIL_URL
+  }
+  const mostPlayedEncounterId = fights[Object.keys(fights)[0]][0].encounterID
   if (encounterThumbnails.hasOwnProperty(mostPlayedEncounterId)) {
     return encounterThumbnails[mostPlayedEncounterId].thumbnail
   }
-  return defaultThumbnailUrl
+  return DEFAULT_THUMBNAIL_URL
+}
+
+function buildAnalysisUrl (reportCode, bestPull) {
+  const url = new URL(XIV_ANALYSIS_URL)
+  url.pathname = `fflogs/${reportCode}/${bestPull.fightNumber}`
+  return url.href
+}
+
+function buildBestPullUrl (reportUrl, bestPull) {
+  return reportUrl + `#fight=${bestPull.fightNumber}`
 }
