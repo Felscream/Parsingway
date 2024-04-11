@@ -21,11 +21,11 @@ Dungeons and small encounters are not displayed
 
 Parsingway supports live logging by checking every minute if a report has been updated on FFLogs. If changes are detected, the previous summary is deleted, and a new one is rewritten.
 
-Reports are tracked automatically if they have been updated in the last 8 hours 
+Reports are tracked automatically if they have been updated in the last 8 hours.
 
 Limits :
-- Only one report per server can be tracked for live logging
+- Only one report per server can be tracked
 - Sending a new message on the channel with the currently tracked report, or a new report on the discord server will interrupt the previous report tracking.
 - Tracking stops if no updates have been detected for more than 1 hour and 30 minutes
-- Due to API limitations, only 80 reports can be live tracked at once. The limit may increase later.
+- Due to API limitations, only 80 reports can be live tracked at once. This limit may increase later.
 
