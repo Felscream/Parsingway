@@ -124,14 +124,13 @@ function updateServerReport (
   reportHash,
   report
 ) {
-  const serverReport = reportPerServer.get(serverId)
-  serverReport.reportUrl = reportUrl
-  serverReport.endOfLife = reportEndOfLife
-  serverReport.embedMessage = sentMessage
-  serverReport.reportCode = code
-  serverReport.channelId = channel.id
-  serverReport.reportHash = reportHash
-  serverReport.reportEndTime = report.endTime
+  reportPerServer.get(serverId).reportUrl = reportUrl
+  reportPerServer.get(serverId).endOfLife = reportEndOfLife
+  reportPerServer.get(serverId).embedMessage = sentMessage
+  reportPerServer.get(serverId).reportCode = code
+  reportPerServer.get(serverId).channelId = channel.id
+  reportPerServer.get(serverId).reportHash = reportHash
+  reportPerServer.get(serverId).reportEndTime = report.endTime
 }
 
 function deleteReport (serverId) {
