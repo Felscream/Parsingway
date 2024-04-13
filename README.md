@@ -28,3 +28,5 @@ Limits :
 - Tracking stops if no updates have been detected for more than 1 hour and 30 minutes
 - Due to API limitations, only 80 reports can be live tracked at once. This limit may increase later.
 
+[Invite link](https://discord.com/oauth2/authorize?client_id=1225561517244547112)
+
