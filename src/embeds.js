@@ -57,39 +57,56 @@ export function createEmbed (
     })
   } else {
     let fieldCount = 2
-    for (let [key, fights] of report.fights.entries()) {
+    for (let [encounterName, fights] of report.fights.entries()) {
       if (fieldCount + 3 > 25) {
         return { embeds: [embed] }
       }
       const bestPull = getBestPull(fights)
-      const bestPullUrl = buildBestPullUrl(reportUrl, bestPull)
-      const bestPullAnalysisUrl = buildAnalysisUrl(reportCode, bestPull)
-      const phase = buildPhaseText(bestPull)
-      const percentage = getBestPullInfo(bestPull)
-      const wipes = getWipes(fights)
-      const totalDuration = getTotalDuration(fights)
+
       embed.addFields(
-        {
-          name: `${MONSTER_EMOJI} **${key}**`,
-          value: `*:stopwatch: ${totalDuration} ${SPACER} ${BATTLE_EMOJI} ${fights.length} ${SPACER} ${PLAY_DEAD_EMOJI} ${wipes}*`
-        },
-        {
-          name: `Best ${bestPull.kill ? 'kill' : 'pull'}`,
-          value: `**${bestPull.killOrWipeNumber}.** ${bestPull.duration.format(
-            DURATION_FORMATTER
-          )} ${phase}${percentage}`,
-          inline: true
-        },
-        {
-          name: 'Links',
-          value: `[${FFLOGS_EMOJI}](${bestPullUrl}) [${ANALYSIS_EMOJI}](${bestPullAnalysisUrl})`,
-          inline: true
-        }
+        createEncounterTitle(encounterName, fights),
+        createBestPullField(bestPull),
+        createBestPullLinks(reportUrl, reportCode, bestPull)
       )
       fieldCount += 3
     }
   }
   return embed
+}
+
+function createBestPullLinks (reportUrl, reportCode, bestPull) {
+  const bestPullUrl = buildBestPullUrl(reportUrl, bestPull)
+  const bestPullAnalysisUrl = buildAnalysisUrl(reportCode, bestPull)
+  return {
+    name: 'Links',
+    value: `[${FFLOGS_EMOJI}](${bestPullUrl}) [${ANALYSIS_EMOJI}](${bestPullAnalysisUrl})`,
+    inline: true
+  }
+}
+
+function createBestPullField (bestPull) {
+  const phase = buildPhaseText(bestPull)
+  const percentage = getBestPullInfo(bestPull)
+  return {
+    name: `Best ${bestPull.kill ? 'kill' : 'pull'}`,
+    value: `**${bestPull.killOrWipeNumber}.** ${bestPull.duration.format(
+      DURATION_FORMATTER
+    )} ${phase}${percentage}`,
+    inline: true
+  }
+}
+
+function createEncounterTitle (encounterName, fights) {
+  const wipes = getWipes(fights)
+  const totalDuration = getTotalDuration(fights)
+  const killCount = fights.length - wipes
+  const killDisplay =
+    killCount > 0 ? `${SPACER} ${BATTLE_EMOJI} ${killCount}` : ''
+  const wipeDisplay = wipes > 0 ? `${SPACER} ${PLAY_DEAD_EMOJI} ${wipes}` : ''
+  return {
+    name: `${MONSTER_EMOJI} **${encounterName}**`,
+    value: `*:stopwatch: ${totalDuration} ${killDisplay} ${wipeDisplay}*`
+  }
 }
 
 function buildPhaseText (bestPull) {
@@ -149,8 +166,8 @@ function getWipes (pulls) {
   return pulls.filter(pull => !pull.kill).length
 }
 
-function hasKillOnReport (fights) {
-  for (let fight of fights.values()) {
+function hasKillOnReport (encounters) {
+  for (let fight of encounters.values()) {
     for (let i = 0; i < fight.length; i++) {
       if (fight[i].kill) {
         return true
