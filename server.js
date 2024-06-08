@@ -3,44 +3,50 @@ import {
   Client,
   Events,
   GatewayIntentBits,
-  MessageFlags
-} from 'discord.js'
-import config from 'config'
-import { ReportService } from './src/fflogs/report-service.js'
-import { Duration, LocalDateTime, ZonedDateTime } from 'js-joda'
-import { createEmbed } from './src/embeds.js'
-import logger from './logger.js'
-import ServerReport from './src/server-report.js'
-import CooldownService from './src/cooldown-service.js'
-import help from './src/commands/utility/help.js'
+  MessageFlags,
+} from "discord.js";
+import config from "config";
+import { ReportService } from "./src/fflogs/report-service.js";
+import { Duration, LocalDateTime, ZonedDateTime } from "js-joda";
+import { createEmbed, createStatsEmbed } from "./src/embeds.js";
+import logger from "./logger.js";
+import ServerReport from "./src/server-report.js";
+import CooldownService from "./src/cooldown-service.js";
+import help from "./src/commands/utility/help.js";
+import {
+  ButtonStyles,
+  ButtonTypes,
+  pagination,
+} from "@devraelfreeze/discordjs-pagination";
 
-const REPORT_UPDATE_DELAY = config.get('report_update_delay') // period between report updates
-const REPORT_TTL = config.get('report_TTL') // how long we are waiting for a change in the log report before we delete it
-const OLD_REPORT_THESHOLD = config.get('old_report_threshold') // how old should a report be before it is considered too old to be updated regularly
-const MAX_SERVER_COUNT = config.get('max_servers') // how many servers can have live logging
-const CALL_COOLDOWN = config.get('call_cooldown')
-const CALL_COUNT_ALERT_THRESHOLD = config.get('call_per_hour_alert_threshold')
+const REPORT_UPDATE_DELAY = config.get("report_update_delay"); // period between report updates
+const REPORT_TTL = config.get("report_TTL"); // how long we are waiting for a change in the log report before we delete it
+const OLD_REPORT_THESHOLD = config.get("old_report_threshold"); // how old should a report be before it is considered too old to be updated regularly
+const MAX_SERVER_COUNT = config.get("max_servers"); // how many servers can have live logging
+const CALL_COOLDOWN = config.get("call_cooldown");
+const CALL_COUNT_ALERT_THRESHOLD = config.get("call_per_hour_alert_threshold");
+const ADMIN_ID = config.get("admin_id");
 
 const reportService = new ReportService(
-  config.get('fflogs'),
-  config.get('max_encounters')
-)
+  config.get("fflogs"),
+  config.get("max_encounters")
+);
 
 const cooldownService = new CooldownService(
   CALL_COOLDOWN,
   CALL_COUNT_ALERT_THRESHOLD
-)
+);
 
 const reportMatcher =
-  /(https:\/\/www.fflogs.com\/reports\/(?:compare\/)?([A-za-z0-9]{12,16}))[#/]?/
-reportService.init()
+  /(https:\/\/www.fflogs.com\/reports\/(?:compare\/)?([A-za-z0-9]{12,16}))[#/]?/;
+reportService.init();
 
-function registerCommands (client) {
-  client.commands = new Map()
-  client.commands.set(help.data.name, help)
+function registerCommands(client) {
+  client.commands = new Map();
+  client.commands.set(help.data.name, help);
 }
 
-function sendReport (
+function sendReport(
   serverId,
   code,
   channel,
@@ -49,23 +55,23 @@ function sendReport (
   saveNewReport = false,
   withAutoRefreshMessage = false
 ) {
-  if (reportPerServer.has(serverId)) {
+  if (reportsPerServer.has(serverId)) {
     if (
-      reportPerServer.get(serverId).reportCode === code &&
-      reportPerServer.get(serverId).channelId === channel.id
+      reportsPerServer.get(serverId).reportCode === code &&
+      reportsPerServer.get(serverId).channelId === channel.id
     ) {
-      reportPerServer.get(serverId).embedMessage.delete()
+      reportsPerServer.get(serverId).embedMessage.delete();
     }
   }
-  const embed = createEmbed(report, code, reportUrl, withAutoRefreshMessage)
+  const embed = createEmbed(report, code, reportUrl, withAutoRefreshMessage);
   channel
     .send({ embeds: [embed], flags: MessageFlags.SuppressNotifications })
     .then(
       setServerReport(report, serverId, reportUrl, code, channel, saveNewReport)
-    )
+    );
 }
 
-function setServerReport (
+function setServerReport(
   report,
   serverId,
   reportUrl,
@@ -73,10 +79,10 @@ function setServerReport (
   channel,
   saveNewReport
 ) {
-  return sentMessage => {
-    const reportHash = report.getHash()
-    const reportEndOfLife = LocalDateTime.now().plusSeconds(REPORT_TTL)
-    if (reportPerServer.has(serverId)) {
+  return (sentMessage) => {
+    const reportHash = report.getHash();
+    const reportEndOfLife = LocalDateTime.now().plusSeconds(REPORT_TTL);
+    if (reportsPerServer.has(serverId)) {
       updateServerReport(
         serverId,
         reportUrl,
@@ -86,11 +92,11 @@ function setServerReport (
         channel,
         reportHash,
         report
-      )
-      return
+      );
+      return;
     }
     if (saveNewReport) {
-      reportPerServer.set(
+      reportsPerServer.set(
         serverId,
         new ServerReport(
           reportUrl,
@@ -101,20 +107,20 @@ function setServerReport (
           channel.id,
           reportHash
         )
-      )
-      reportPerServer.get(serverId).timeoutId = setInterval(
+      );
+      reportsPerServer.get(serverId).timeoutId = setInterval(
         updateReport,
         REPORT_UPDATE_DELAY,
         serverId
-      )
-      logger.info(`Added report ${code} from ${serverId} to tracked reports`)
+      );
+      logger.info(`Added report ${code} from ${serverId} to tracked reports`);
     } else if (!canTrackReport(serverId)) {
-      logger.warn('Cannot track more reports')
+      logger.warn("Cannot track more reports");
     }
-  }
+  };
 }
 
-function updateServerReport (
+function updateServerReport(
   serverId,
   reportUrl,
   reportEndOfLife,
@@ -124,46 +130,46 @@ function updateServerReport (
   reportHash,
   report
 ) {
-  reportPerServer.get(serverId).reportUrl = reportUrl
-  reportPerServer.get(serverId).endOfLife = reportEndOfLife
-  reportPerServer.get(serverId).embedMessage = sentMessage
-  reportPerServer.get(serverId).reportCode = code
-  reportPerServer.get(serverId).channelId = channel.id
-  reportPerServer.get(serverId).reportHash = reportHash
-  reportPerServer.get(serverId).reportEndTime = report.endTime
+  reportsPerServer.get(serverId).reportUrl = reportUrl;
+  reportsPerServer.get(serverId).endOfLife = reportEndOfLife;
+  reportsPerServer.get(serverId).embedMessage = sentMessage;
+  reportsPerServer.get(serverId).reportCode = code;
+  reportsPerServer.get(serverId).channelId = channel.id;
+  reportsPerServer.get(serverId).reportHash = reportHash;
+  reportsPerServer.get(serverId).reportEndTime = report.endTime;
 }
 
-function deleteReport (serverId) {
-  if (reportPerServer.has(serverId)) {
-    const serverReport = reportPerServer.get(serverId)
-    const reportCode = serverReport.reportCode
-    logger.info(`Deleting report ${reportCode} from server ${serverId}`)
-    clearInterval(serverReport.timeoutId)
-    reportPerServer.delete(serverId)
+function deleteReport(serverId) {
+  if (reportsPerServer.has(serverId)) {
+    const serverReport = reportsPerServer.get(serverId);
+    const reportCode = serverReport.reportCode;
+    logger.info(`Deleting report ${reportCode} from server ${serverId}`);
+    clearInterval(serverReport.timeoutId);
+    reportsPerServer.delete(serverId);
   }
 }
 
-function updateReport (serverId) {
-  if (!reportPerServer.has(serverId)) {
-    return
+function updateReport(serverId) {
+  if (!reportsPerServer.has(serverId)) {
+    return;
   }
 
   if (cooldownService.canGetReport(serverId)) {
-    cooldownService.registerServerCall(serverId)
+    cooldownService.registerServerCall(serverId);
   } else {
-    logger.warn(`Blocked auto update from ${serverId}`)
-    return
+    logger.warn(`Blocked auto update from ${serverId}`);
+    return;
   }
 
-  const serverReport = reportPerServer.get(serverId)
+  const serverReport = reportsPerServer.get(serverId);
 
   reportService.synthesize(serverReport.reportCode).then(
-    newReport => {
-      const newReportHash = newReport.getHash()
+    (newReport) => {
+      const newReportHash = newReport.getHash();
       if (newReportHash === serverReport.reportHash) {
         logger.info(
           `Report ${serverReport.reportCode} from server ${serverId} has not changed, no update required`
-        )
+        );
         if (
           Duration.between(
             serverReport.endOfLife,
@@ -172,15 +178,15 @@ function updateReport (serverId) {
         ) {
           logger.info(
             `No changes detected for a long period on report ${serverReport.reportCode} from server ${serverId}, it will be deleted`
-          )
-          deleteReport(serverId)
+          );
+          deleteReport(serverId);
         }
-        return
+        return;
       }
 
       logger.info(
         `Changes detected on report ${serverReport.reportCode} from server ${serverId}, updating ...`
-      )
+      );
 
       try {
         sendReport(
@@ -191,108 +197,151 @@ function updateReport (serverId) {
           serverReport.reportUrl,
           false,
           true
-        )
+        );
       } catch (error) {
-        logger.error(error)
-        return
+        logger.error(error);
+        return;
       }
     },
-    reject => {
-      logger.error(reject)
+    (reject) => {
+      logger.error(reject);
     }
-  )
+  );
 }
 
-function canTrackReport (serverId) {
+function canTrackReport(serverId) {
   return (
-    reportPerServer.has(serverId) || reportPerServer.size < MAX_SERVER_COUNT
-  )
+    reportsPerServer.has(serverId) || reportsPerServer.size < MAX_SERVER_COUNT
+  );
 }
 
-const reportPerServer = new Map()
-const token = config.get('token')
+async function printCurrentReports(message) {
+  const reports = reportsPerServer;
+  for (let [
+    serverId,
+    lastCall,
+  ] of cooldownService.lastCallPerServer.entries()) {
+    if (reports.has(serverId)) {
+      reports.get(serverId).lastCall = lastCall.lastCall;
+    } else {
+      reports.set(serverId, { lastCall: lastCall.lastCall });
+    }
+  }
+
+  const embeds = createStatsEmbed(reports);
+  await pagination({
+    embeds: embeds /** Array of embeds objects */,
+    message: message,
+    author: message.author.id,
+    ephemeral: true,
+    time: 40000 /** 40 seconds */,
+    disableButtons: false /** Remove buttons after timeout */,
+    fastSkip: false,
+    pageTravel: false,
+    buttons: [
+      {
+        type: ButtonTypes.previous,
+        label: "Previous Page",
+        style: ButtonStyles.Primary,
+      },
+      {
+        type: ButtonTypes.next,
+        label: "Next Page",
+        style: ButtonStyles.Success,
+      },
+    ],
+  });
+}
+
+const reportsPerServer = new Map();
+const token = config.get("token");
 const parsingway = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ]
-})
-registerCommands(parsingway)
+    GatewayIntentBits.MessageContent,
+  ],
+});
+registerCommands(parsingway);
 
 parsingway.once(Events.ClientReady, () => {
-  logger.info(`Logged in as ${parsingway.user.tag}!`)
+  logger.info(`Logged in as ${parsingway.user.tag}!`);
   parsingway.user.setPresence({
-    activities: [{ name: 'greeding that GCD', type: ActivityType.Competing }]
-  })
-})
+    activities: [{ name: "greeding that GCD", type: ActivityType.Competing }],
+  });
+});
 
-parsingway.on(Events.MessageCreate, message => {
+parsingway.on(Events.MessageCreate, (message) => {
   if (message.author.id === parsingway.user.id) {
-    return
+    return;
   }
 
-  const channel = parsingway.channels.cache.get(message.channelId)
+  const channel = parsingway.channels.cache.get(message.channelId);
   if (!channel) {
-    return
+    return;
   }
 
-  const serverId = message.guildId
-  const matcher = new RegExp(reportMatcher, 'g')
-  let match = matcher.exec(message.content)
+  if (message.author.id === ADMIN_ID && message.content === "!stats") {
+    printCurrentReports(message);
+    return;
+  }
+
+  const serverId = message.guildId;
+  const matcher = new RegExp(reportMatcher, "g");
+  let match = matcher.exec(message.content);
   if (!match) {
     if (message.embeds.length === 0 || !message.embeds[0].data.url) {
       if (
-        reportPerServer.has(serverId) &&
-        reportPerServer.get(serverId).channelId === message.channelId
+        reportsPerServer.has(serverId) &&
+        reportsPerServer.get(serverId).channelId === message.channelId
       ) {
-        deleteReport(serverId)
+        deleteReport(serverId);
       }
-      return
+      return;
     }
-    match = matcher.exec(message.embeds[0].data.url)
+    match = matcher.exec(message.embeds[0].data.url);
     if (!match) {
       if (
-        reportPerServer.has(serverId) &&
-        reportPerServer.get(serverId).channelId === message.channelId
+        reportsPerServer.has(serverId) &&
+        reportsPerServer.get(serverId).channelId === message.channelId
       ) {
-        deleteReport(serverId)
+        deleteReport(serverId);
       }
-      return
+      return;
     }
   }
 
   if (cooldownService.canGetReport(serverId)) {
-    cooldownService.registerServerCall(serverId)
+    cooldownService.registerServerCall(serverId);
   } else {
-    logger.warn(`Blocked request from ${serverId}`)
-    return
+    logger.warn(`Blocked request from ${serverId}`);
+    return;
   }
 
-  const reportUrl = match[1].replace('compare/', '')
-  const code = match[2]
+  const reportUrl = match[1].replace("compare/", "");
+  const code = match[2];
   if (
-    reportPerServer.has(serverId) &&
-    reportPerServer.get(serverId).timeoutId
+    reportsPerServer.has(serverId) &&
+    reportsPerServer.get(serverId).timeoutId
   ) {
     logger.info(
       `Clearing previous report auto refresh for report ${
-        reportPerServer.get(serverId).reportCode
+        reportsPerServer.get(serverId).reportCode
       } on server ${serverId}`
-    )
-    clearInterval(reportPerServer.get(serverId).timeoutId)
+    );
+    clearInterval(reportsPerServer.get(serverId).timeoutId);
   }
-  logger.info(`Received new report ${code} from ${serverId}`)
+  logger.info(`Received new report ${code} from ${serverId}`);
   reportService.synthesize(code).then(
-    report => {
+    (report) => {
       const timeSinceLastReportUpdate = Duration.between(
         report.endTime,
         ZonedDateTime.now()
-      )
+      );
       const withAutoRefresh =
-        timeSinceLastReportUpdate.seconds() < OLD_REPORT_THESHOLD
-      const saveNewReport = canTrackReport(serverId) && withAutoRefresh
-      logger.info(`Auto refresh for report ${code} : ${withAutoRefresh}`)
+        timeSinceLastReportUpdate.seconds() < OLD_REPORT_THESHOLD;
+      const saveNewReport = canTrackReport(serverId) && withAutoRefresh;
+      logger.info(`Auto refresh for report ${code} : ${withAutoRefresh}`);
       try {
         sendReport(
           serverId,
@@ -302,41 +351,41 @@ parsingway.on(Events.MessageCreate, message => {
           reportUrl,
           saveNewReport,
           saveNewReport
-        )
+        );
       } catch (error) {
-        logger.error(error)
+        logger.error(error);
       }
     },
-    reject => {
-      logger.error(reject)
+    (reject) => {
+      logger.error(reject);
     }
-  )
-})
+  );
+});
 
-parsingway.on(Events.InteractionCreate, async interaction => {
-  if (!interaction.isChatInputCommand()) return
-  const command = interaction.client.commands.get(interaction.commandName)
+parsingway.on(Events.InteractionCreate, async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+  const command = interaction.client.commands.get(interaction.commandName);
   if (!command) {
-    console.error(`No command matching ${interaction.commandName} was found.`)
-    return
+    console.error(`No command matching ${interaction.commandName} was found.`);
+    return;
   }
 
   try {
-    await command.execute(interaction)
+    await command.execute(interaction);
   } catch (error) {
-    console.error(error)
+    console.error(error);
     if (interaction.replied || interaction.deferred) {
       await interaction.followUp({
-        content: 'There was an error while executing this command!',
-        ephemeral: true
-      })
+        content: "There was an error while executing this command!",
+        ephemeral: true,
+      });
     } else {
       await interaction.reply({
-        content: 'There was an error while executing this command!',
-        ephemeral: true
-      })
+        content: "There was an error while executing this command!",
+        ephemeral: true,
+      });
     }
   }
-})
+});
 
-parsingway.login(token)
+parsingway.login(token);

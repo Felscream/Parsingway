@@ -1,56 +1,56 @@
-import { GraphQLClient } from 'graphql-request'
-import { reportQuery } from './queries.js'
+import { GraphQLClient } from "graphql-request";
+import { reportQuery } from "./queries.js";
 
 export default class FflogsClient {
-  constructor (fflogsConfig) {
-    this.conf = fflogsConfig
+  constructor(fflogsConfig) {
+    this.conf = fflogsConfig;
   }
 
-  async getToken () {
+  async getToken() {
     const authHeader =
-      'Basic ' + btoa(this.conf.client_id + ':' + this.conf.client_secret)
+      "Basic " + btoa(this.conf.client_id + ":" + this.conf.client_secret);
     const response = await fetch(this.conf.token_url, {
-      method: 'POST',
+      method: "POST",
       headers: {
         Authorization: authHeader,
-        'Content-Type': 'application/x-www-form-urlencoded'
+        "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: 'grant_type=client_credentials'
-    })
-    const json = await response.json()
+      body: "grant_type=client_credentials",
+    });
+    const json = await response.json();
     if (response.status === 200) {
       this.nextTokenRefreshTime =
-        Math.floor(Date.now() / 1000) + json.expires_in
-      return json.access_token
+        Math.floor(Date.now() / 1000) + json.expires_in;
+      return json.access_token;
     } else {
-      throw new Error('Response was not OK: ' + JSON.stringify(json ?? {}))
+      throw new Error("Response was not OK: " + JSON.stringify(json ?? {}));
     }
   }
 
-  async init () {
-    const accessToken = await this.getToken()
-    this.client = new GraphQLClient(this.conf.get('endpoint'), {
+  async init() {
+    const accessToken = await this.getToken();
+    this.client = new GraphQLClient(this.conf.get("endpoint"), {
       headers: {
-        Authorization: 'Bearer ' + accessToken
-      }
-    })
+        Authorization: "Bearer " + accessToken,
+      },
+    });
   }
 
-  needToRefreshToken () {
+  needToRefreshToken() {
     if (!this.client) {
-      return true
+      return true;
     }
     if (!this.nextTokenRefreshTime) {
-      return true
+      return true;
     }
-    return this.nextTokenRefreshTime <= Math.floor(Date.now() / 1000)
+    return this.nextTokenRefreshTime <= Math.floor(Date.now() / 1000);
   }
 
-  async getReport (reportCode) {
+  async getReport(reportCode) {
     if (this.needToRefreshToken()) {
-      await this.init()
+      await this.init();
     }
-    const variables = { reportCode }
-    return await this.client.request(reportQuery, variables)
+    const variables = { reportCode };
+    return await this.client.request(reportQuery, variables);
   }
 }

@@ -1,67 +1,67 @@
-import { Duration, Instant, ZoneId, ZonedDateTime } from 'js-joda'
-import FflogsClient from './fflogs-client.js'
-import { LocalTime } from 'js-joda'
-import objectHash from 'object-hash'
+import { Duration, Instant, ZoneId, ZonedDateTime } from "js-joda";
+import FflogsClient from "./fflogs-client.js";
+import { LocalTime } from "js-joda";
+import objectHash from "object-hash";
 
 class ReportService {
-  constructor (fflogsConfiguration, maxEncounters) {
-    this.fflogsClient = new FflogsClient(fflogsConfiguration)
-    this.maxEncounters = maxEncounters
+  constructor(fflogsConfiguration, maxEncounters) {
+    this.fflogsClient = new FflogsClient(fflogsConfiguration);
+    this.maxEncounters = maxEncounters;
   }
 
-  async init () {
-    await this.fflogsClient.init()
+  async init() {
+    await this.fflogsClient.init();
   }
 
-  async synthesize (reportCode) {
-    let data = null
+  async synthesize(reportCode) {
+    let data = null;
     try {
-      data = await this.fflogsClient.getReport(reportCode)
+      data = await this.fflogsClient.getReport(reportCode);
     } catch (error) {
-      return Promise.reject(error)
+      return Promise.reject(error);
     }
 
-    return this.buildReport(data.reportData.report)
+    return this.buildReport(data.reportData.report);
   }
 
-  buildReport (rawReport) {
-    const startInstant = Instant.ofEpochMilli(rawReport.startTime)
+  buildReport(rawReport) {
+    const startInstant = Instant.ofEpochMilli(rawReport.startTime);
     const startTime = ZonedDateTime.ofInstant(
       startInstant,
       ZoneId.systemDefault()
-    )
-    const endInstant = Instant.ofEpochMilli(rawReport.endTime)
-    const endTime = ZonedDateTime.ofInstant(endInstant, ZoneId.systemDefault())
+    );
+    const endInstant = Instant.ofEpochMilli(rawReport.endTime);
+    const endTime = ZonedDateTime.ofInstant(endInstant, ZoneId.systemDefault());
     const report = new Report(
       rawReport.title,
       startTime,
       endTime,
       this.buildFights(rawReport)
-    )
+    );
     return new Promise((resolve, reject) => {
-      resolve(report)
-    })
+      resolve(report);
+    });
   }
 
-  buildFights (report) {
-    const encounters = getHighestDifficultyFights(report.fights)
+  buildFights(report) {
+    const encounters = getHighestDifficultyFights(report.fights);
     const sortedEncounters = sortEncountersByPullNumber(
       encounters,
       this.maxEncounters || 1
-    )
+    );
 
-    const fights = new Map()
-    const killsAndWipes = getKillAndWipeNumbers(sortedEncounters)
+    const fights = new Map();
+    const killsAndWipes = getKillAndWipeNumbers(sortedEncounters);
     for (let [name, rawPulls] of sortedEncounters.entries()) {
       if (!fights.has(name)) {
-        fights.set(name, [])
+        fights.set(name, []);
       }
       rawPulls.forEach((rawPull, index) => {
-        const encounterNumber = getPullNumber(killsAndWipes, index, name)
+        const encounterNumber = getPullNumber(killsAndWipes, index, name);
         const duration = LocalTime.ofInstant(
           Instant.ofEpochMilli(rawPull.fight.endTime - rawPull.fight.startTime),
           ZoneId.UTC
-        )
+        );
         const pull = new Pull(
           rawPull.fight.bossPercentage,
           rawPull.fight.fightPercentage,
@@ -71,33 +71,33 @@ class ReportService {
           encounterNumber,
           rawPull.fight.encounterID,
           rawPull.fightNumber
-        )
-        fights.get(name).push(pull)
-      })
+        );
+        fights.get(name).push(pull);
+      });
     }
-    return fights
+    return fights;
   }
 }
 
-function getHighestDifficultyFights (fights) {
-  const pullsPerEncounters = new Map()
+function getHighestDifficultyFights(fights) {
+  const pullsPerEncounters = new Map();
   fights.forEach((encounter, index) => {
     if (!pullsPerEncounters.has(encounter.name)) {
-      pullsPerEncounters.set(encounter.name, [])
+      pullsPerEncounters.set(encounter.name, []);
     }
 
     pullsPerEncounters.get(encounter.name).push({
       fight: encounter,
-      fightNumber: index + 1
-    })
-  })
+      fightNumber: index + 1,
+    });
+  });
 
-  const highestDifficultyEncounters = new Map()
+  const highestDifficultyEncounters = new Map();
   for (let [encounterName, encounters] of pullsPerEncounters.entries()) {
-    let highestDifficulty = -1
+    let highestDifficulty = -1;
     for (let encounter of encounters) {
       if (encounter.fight.difficulty > highestDifficulty) {
-        highestDifficulty = encounter.fight.difficulty
+        highestDifficulty = encounter.fight.difficulty;
       }
     }
 
@@ -105,95 +105,97 @@ function getHighestDifficultyFights (fights) {
       highestDifficulty === -1 ||
       (highestDifficulty !== 11 && highestDifficulty < 100)
     ) {
-      continue
+      continue;
     }
     const difficultEncounters = encounters.filter(
-      encounter =>
+      (encounter) =>
         encounter.fight.difficulty === highestDifficulty &&
         (highestDifficulty >= 100 || highestDifficulty === 11)
-    )
+    );
 
     if (!highestDifficultyEncounters.has(encounterName)) {
-      highestDifficultyEncounters.set(encounterName, [])
+      highestDifficultyEncounters.set(encounterName, []);
     }
     highestDifficultyEncounters.set(
       encounterName,
       highestDifficultyEncounters.get(encounterName).concat(difficultEncounters)
-    )
+    );
   }
-  return highestDifficultyEncounters
+  return highestDifficultyEncounters;
 }
 
-function sortEncountersByPullNumber (fights, maxEncounters) {
-  const sortedFights = new Map()
+function sortEncountersByPullNumber(fights, maxEncounters) {
+  const sortedFights = new Map();
   while (fights.size > 0 && sortedFights.size < maxEncounters) {
-    const encounter = getEncounterWithMostPulls(fights)
-    sortedFights.set(encounter.name, fights.get(encounter.name))
-    fights.delete(encounter.name)
+    const encounter = getEncounterWithMostPulls(fights);
+    sortedFights.set(encounter.name, fights.get(encounter.name));
+    fights.delete(encounter.name);
   }
-  return sortedFights
+  return sortedFights;
 }
 
-function getEncounterWithMostPulls (fights) {
-  let encounterId = -1
-  let pullCount = -1
-  let encounterName = ''
+function getEncounterWithMostPulls(fights) {
+  let encounterId = -1;
+  let pullCount = -1;
+  let encounterName = "";
   for (let [key, fight] of fights.entries()) {
     if (fight.length > pullCount) {
-      pullCount = fight.length
-      encounterId = fight[0].fight.encounterID
-      encounterName = key
+      pullCount = fight.length;
+      encounterId = fight[0].fight.encounterID;
+      encounterName = key;
     }
   }
-  return { name: encounterName, id: encounterId }
+  return { name: encounterName, id: encounterId };
 }
 
-function getKillAndWipeNumbers (pulls) {
-  const kills = new Map()
-  const wipes = new Map()
+function getKillAndWipeNumbers(pulls) {
+  const kills = new Map();
+  const wipes = new Map();
   for (let [name, encounters] of pulls.entries()) {
     if (!kills.has(name)) {
-      kills.set(name, [])
+      kills.set(name, []);
     }
     if (!wipes.has(name)) {
-      wipes.set(name, [])
+      wipes.set(name, []);
     }
     encounters.forEach((encounter, index) => {
       if (encounter.fight.kill) {
-        kills.get(name).push(index + 1)
+        kills.get(name).push(index + 1);
       } else {
-        wipes.get(name).push(index + 1)
+        wipes.get(name).push(index + 1);
       }
-    })
+    });
   }
 
-  return { kills, wipes }
+  return { kills, wipes };
 }
 
-function getPullNumber (killAndWipes, curIndex, encounter) {
-  let killOrWipeNumber = killAndWipes.wipes.get(encounter).indexOf(curIndex + 1)
+function getPullNumber(killAndWipes, curIndex, encounter) {
+  let killOrWipeNumber = killAndWipes.wipes
+    .get(encounter)
+    .indexOf(curIndex + 1);
   if (killOrWipeNumber === -1) {
-    killOrWipeNumber = killAndWipes.kills.get(encounter).indexOf(curIndex + 1)
+    killOrWipeNumber = killAndWipes.kills.get(encounter).indexOf(curIndex + 1);
   }
 
-  return killOrWipeNumber + 1
+  return killOrWipeNumber + 1;
 }
 
 class Report {
-  constructor (title, startTime, endTime, fights) {
-    this.title = title
-    this.startTime = startTime
-    this.endTime = endTime
-    this.fights = fights
+  constructor(title, startTime, endTime, fights) {
+    this.title = title;
+    this.startTime = startTime;
+    this.endTime = endTime;
+    this.fights = fights;
   }
 
-  getHash () {
-    return objectHash.sha1(this, { excludeKeys: key => key === 'endTime' })
+  getHash() {
+    return objectHash.sha1(this, { excludeKeys: (key) => key === "endTime" });
   }
 }
 
 class Pull {
-  constructor (
+  constructor(
     bossPercentage,
     fightPercentage,
     isKill,
@@ -203,14 +205,14 @@ class Pull {
     encounterID,
     fightNumber
   ) {
-    this.bossPercentage = bossPercentage
-    this.fightPercentage = fightPercentage
-    this.kill = isKill
-    this.duration = duration
-    this.lastPhase = lastPhase
-    this.killOrWipeNumber = killOrWipeNumber
-    this.encounterID = encounterID
-    this.fightNumber = fightNumber
+    this.bossPercentage = bossPercentage;
+    this.fightPercentage = fightPercentage;
+    this.kill = isKill;
+    this.duration = duration;
+    this.lastPhase = lastPhase;
+    this.killOrWipeNumber = killOrWipeNumber;
+    this.encounterID = encounterID;
+    this.fightNumber = fightNumber;
   }
 }
-export { ReportService, Report, Pull }
+export { ReportService, Report, Pull };

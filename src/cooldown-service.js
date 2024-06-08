@@ -1,23 +1,23 @@
-import { Duration, LocalDateTime } from 'js-joda'
-import logger from '../logger.js'
+import { Duration, LocalDateTime } from "js-joda";
+import logger from "../logger.js";
 
-var self
-const HOUR_IN_MILLI = 3600000
+var self;
+const HOUR_IN_MILLI = 3600000;
 
 export default class CooldownService {
-  constructor (cooldown, callCountAlertThreshold) {
-    this.cooldown = cooldown
-    this.lastCallPerServer = new Map()
-    this.callCountAlertThreshold = callCountAlertThreshold
-    self = this
+  constructor(cooldown, callCountAlertThreshold) {
+    this.cooldown = cooldown;
+    this.lastCallPerServer = new Map();
+    this.callCountAlertThreshold = callCountAlertThreshold;
+    self = this;
 
     // clear every hour
-    setInterval(() => clear(), HOUR_IN_MILLI)
+    setInterval(() => clear(), HOUR_IN_MILLI);
   }
 
-  canGetReport (serverId) {
+  canGetReport(serverId) {
     if (!this.lastCallPerServer.has(serverId)) {
-      return true
+      return true;
     }
 
     if (
@@ -28,8 +28,8 @@ export default class CooldownService {
         `Server ${serverId} has had ${
           this.lastCallPerServer.get(serverId).callCount
         } calls in the last hour`
-      )
-      return false
+      );
+      return false;
     }
 
     return (
@@ -37,30 +37,30 @@ export default class CooldownService {
         this.lastCallPerServer.get(serverId).lastCall,
         LocalDateTime.now()
       ).seconds() >= this.cooldown
-    )
+    );
   }
 
-  registerServerCall (serverId) {
+  registerServerCall(serverId) {
     if (this.lastCallPerServer.has(serverId)) {
-      this.lastCallPerServer.get(serverId).newCall()
+      this.lastCallPerServer.get(serverId).newCall();
     } else {
-      this.lastCallPerServer.set(serverId, new ServerCall())
+      this.lastCallPerServer.set(serverId, new ServerCall());
     }
   }
 }
 
-function clear () {
-  self.lastCallPerServer = new Map()
+function clear() {
+  self.lastCallPerServer = new Map();
 }
 
 class ServerCall {
-  constructor () {
-    this.lastCall = LocalDateTime.now()
-    this.callCount = 1
+  constructor() {
+    this.lastCall = LocalDateTime.now();
+    this.callCount = 1;
   }
 
-  newCall () {
-    this.callCount += 1
-    this.lastCall = LocalDateTime.now()
+  newCall() {
+    this.callCount += 1;
+    this.lastCall = LocalDateTime.now();
   }
 }

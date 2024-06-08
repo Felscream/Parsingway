@@ -1,5 +1,5 @@
 export default class ServerReport {
-  constructor (
+  constructor(
     reportUrl,
     reportCode,
     endOfLife,
@@ -8,13 +8,13 @@ export default class ServerReport {
     channelId,
     reportHash
   ) {
-    this.reportUrl = reportUrl
-    this.reportCode = reportCode
-    this.endOfLife = endOfLife
-    this.reportEndTime = endTime
-    this.embedMessage = embedMessage
-    this.channelId = channelId
-    this.reportHash = reportHash
-    this.timeoutId = null
+    this.reportUrl = reportUrl;
+    this.reportCode = reportCode;
+    this.endOfLife = endOfLife;
+    this.reportEndTime = endTime;
+    this.embedMessage = embedMessage;
+    this.channelId = channelId;
+    this.reportHash = reportHash;
+    this.timeoutId = null;
   }
 }

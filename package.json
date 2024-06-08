@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@devraelfreeze/discordjs-pagination": "^2.7.6",
     "config": "^3.3.11",
     "discord.js": "^14.14.1",
     "graphql-request": "^6.1.0",

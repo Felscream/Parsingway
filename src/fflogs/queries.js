@@ -1,4 +1,4 @@
-import { gql } from 'graphql-request'
+import { gql } from "graphql-request";
 
 const reportQuery = gql`
   query getReportData($reportCode: String!) {
@@ -21,6 +21,6 @@ const reportQuery = gql`
       }
     }
   }
-`
+`;
 
-export { reportQuery }
+export { reportQuery };
