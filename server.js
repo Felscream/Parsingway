@@ -137,6 +137,12 @@ function updateServerReport(
   reportsPerServer.get(serverId).channelId = channel.id;
   reportsPerServer.get(serverId).reportHash = reportHash;
   reportsPerServer.get(serverId).reportEndTime = report.endTime;
+  clearInterval(reportsPerServer.get(serverId).timeoutId);
+  reportsPerServer.get(serverId).timeoutId = setInterval(
+    updateReport,
+    REPORT_UPDATE_DELAY,
+    serverId
+  );
 }
 
 function deleteReport(serverId) {
