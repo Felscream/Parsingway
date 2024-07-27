@@ -96,7 +96,7 @@ export function createStatsEmbed(serverCalls) {
     const endTime = call.reportEndTime
       ? call.reportEndTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
       : "NA";
-    const lastCall = call.lastCall.format(
+    const lastCall = call.lastCall?.format(
       DateTimeFormatter.ISO_LOCAL_DATE_TIME
     );
     page.addFields({
