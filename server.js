@@ -306,6 +306,9 @@ parsingway.on(Events.MessageCreate, (message) => {
         reportsPerServer.has(serverId) &&
         reportsPerServer.get(serverId).channelId === message.channelId
       ) {
+        logger.info(
+          `Conversation detected in channel ${message.channelId} from server ${serverId}, the current report will be deleted to prevent messages to appear`
+        );
         deleteReport(serverId);
       }
       return;
@@ -316,6 +319,9 @@ parsingway.on(Events.MessageCreate, (message) => {
         reportsPerServer.has(serverId) &&
         reportsPerServer.get(serverId).channelId === message.channelId
       ) {
+        logger.info(
+          `Conversation detected in channel ${message.channelId} from server ${serverId}, the current report will be deleted to prevent messages to appear`
+        );
         deleteReport(serverId);
       }
       return;
