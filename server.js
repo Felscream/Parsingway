@@ -60,7 +60,12 @@ function sendReport(
       reportsPerServer.get(serverId).reportCode === code &&
       reportsPerServer.get(serverId).channelId === channel.id
     ) {
-      reportsPerServer.get(serverId).embedMessage.delete();
+      reportsPerServer
+        .get(serverId)
+        .embedMessage.delete()
+        .catch((error) => {
+          logger.error(error);
+        });
     }
   }
   const embed = createEmbed(report, code, reportUrl, withAutoRefreshMessage);
