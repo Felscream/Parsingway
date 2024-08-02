@@ -363,7 +363,19 @@ parsingway.on(Events.MessageCreate, (message) => {
         reportsPerServer.get(serverId).reportCode
       } on server ${serverId}`
     );
+    const serverReport = reportsPerServer.get(serverId);
     clearInterval(reportsPerServer.get(serverId).timeoutId);
+    let embed = serverReport.embedMessage?.embeds[0];
+      if (embed) {
+        embed = removeFooter(embed);
+
+        serverReport.embedMessage.edit({ embeds: [embed] }).catch((error) => {
+          logger.error(
+            `Error while editing message for report ${serverReport.reportCode}`
+          );
+          logger.error(error);
+        });
+      }
   }
   logger.info(`Received new report ${code} from ${serverId}`);
   reportService.synthesize(code).then(
