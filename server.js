@@ -229,16 +229,16 @@ function updateReport(serverId) {
         serverReport.reportUrl,
         true
       );
-      reportsPerServer
-        .get(serverId)
-        .embedMessage.edit({ embeds: [embed] })
-        .then((mes) =>
+      const originalMessage = reportsPerServer.get(serverId).embedMessage;
+      originalMessage
+        .edit({ embeds: [embed] })
+        .then(
           setServerReport(
             newReport,
             serverId,
             serverReport.reportUrl,
             serverReport.reportCode,
-            mes.channel,
+            originalMessage.channel,
             false
           )
         )
@@ -367,16 +367,16 @@ parsingway.on(Events.MessageCreate, (message) => {
     const serverReport = reportsPerServer.get(serverId);
     clearInterval(serverReport.timeoutId);
     let embed = serverReport.embedMessage?.embeds[0];
-      if (embed) {
-        embed = removeFooter(embed);
+    if (embed) {
+      embed = removeFooter(embed);
 
-        serverReport.embedMessage.edit({ embeds: [embed] }).catch((error) => {
-          logger.error(
-            `Error while editing message for report ${serverReport.reportCode}`
-          );
-          logger.error(error);
-        });
-      }
+      serverReport.embedMessage.edit({ embeds: [embed] }).catch((error) => {
+        logger.error(
+          `Error while editing message for report ${serverReport.reportCode}`
+        );
+        logger.error(error);
+      });
+    }
   }
   logger.info(`Received new report ${code} from ${serverId}`);
   reportService.synthesize(code).then(
