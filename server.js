@@ -8,7 +8,7 @@ import {
 import config from "config";
 import { ReportService } from "./src/fflogs/report-service.js";
 import { Duration, LocalDateTime, ZonedDateTime } from "js-joda";
-import { createEmbed, createStatsEmbed } from "./src/embeds.js";
+import { createEmbed, removeFooter, createStatsEmbed } from "./src/embeds.js";
 import logger from "./logger.js";
 import ServerReport from "./src/server-report.js";
 import CooldownService from "./src/cooldown-service.js";
@@ -55,16 +55,22 @@ function sendReport(
   saveNewReport = false,
   withAutoRefreshMessage = false
 ) {
-  if (reportsPerServer.has(serverId)) {
-    if (
-      reportsPerServer.get(serverId).reportCode === code &&
-      reportsPerServer.get(serverId).channelId === channel.id
-    ) {
+  if (
+    reportsPerServer.has(serverId) &&
+    reportsPerServer.get(serverId).reportCode === code &&
+    reportsPerServer.get(serverId).embedMessage
+  ) {
+    let oldEmbed = reportsPerServer.get(serverId).embedMessage.embeds[0];
+    if (oldEmbed) {
+      oldEmbed = removeFooter(oldEmbed);
       reportsPerServer
         .get(serverId)
-        .embedMessage.delete()
+        .embedMessage.edit({ embeds: [oldEmbed] })
         .catch((error) => {
-          logger.error(error);
+          logger.error(
+            `Error while editing message for report ${serverReport.reportCode}`
+          );
+          console.error(error);
         });
     }
   }
@@ -150,18 +156,35 @@ function updateServerReport(
   );
 }
 
-function deleteReport(serverId) {
+function deleteReport(serverId, updateMessage = false) {
   if (reportsPerServer.has(serverId)) {
     const serverReport = reportsPerServer.get(serverId);
     const reportCode = serverReport.reportCode;
     logger.info(`Deleting report ${reportCode} from server ${serverId}`);
     clearInterval(serverReport.timeoutId);
+    if (updateMessage) {
+      let embed = serverReport.embedMessage?.embeds[0];
+      if (embed) {
+        embed = removeFooter(embed);
+
+        serverReport.embedMessage.edit({ embeds: [embed] }).catch((error) => {
+          logger.error(
+            `Error while editing message for report ${serverReport.reportCode}`
+          );
+          console.error(error);
+        });
+      }
+    }
+
     reportsPerServer.delete(serverId);
   }
 }
 
 function updateReport(serverId) {
-  if (!reportsPerServer.has(serverId)) {
+  if (
+    !reportsPerServer.has(serverId) ||
+    !reportsPerServer.get(serverId).embedMessage
+  ) {
     return;
   }
 
@@ -190,7 +213,7 @@ function updateReport(serverId) {
           logger.info(
             `No changes detected for a long period on report ${serverReport.reportCode} from server ${serverId}, it will be deleted`
           );
-          deleteReport(serverId);
+          deleteReport(serverId, true);
         }
         return;
       }
@@ -199,20 +222,32 @@ function updateReport(serverId) {
         `Changes detected on report ${serverReport.reportCode} from server ${serverId}, updating ...`
       );
 
-      try {
-        sendReport(
-          serverId,
-          serverReport.reportCode,
-          serverReport.embedMessage.channel,
-          newReport,
-          serverReport.reportUrl,
-          false,
-          true
-        );
-      } catch (error) {
-        logger.error(error);
-        return;
-      }
+      const embed = createEmbed(
+        newReport,
+        serverReport.reportCode,
+        serverReport.reportUrl,
+        true
+      );
+      reportsPerServer
+        .get(serverId)
+        .embedMessage.edit({ embeds: [embed] })
+        .then((mes) =>
+          setServerReport(
+            newReport,
+            serverId,
+            serverReport.reportUrl,
+            serverReport.reportCode,
+            mes.channel,
+            false
+          )
+        )
+        .catch((error) => {
+          logger.error(
+            `Error while editing message for report ${serverReport.reportCode}, it will be deleted`
+          );
+          console.error(error);
+          deleteReport(serverId);
+        });
     },
     (reject) => {
       logger.error(reject);
@@ -302,28 +337,10 @@ parsingway.on(Events.MessageCreate, (message) => {
   let match = matcher.exec(message.content);
   if (!match) {
     if (message.embeds.length === 0 || !message.embeds[0].data.url) {
-      if (
-        reportsPerServer.has(serverId) &&
-        reportsPerServer.get(serverId).channelId === message.channelId
-      ) {
-        logger.info(
-          `Conversation detected in channel ${message.channelId} from server ${serverId}, the current report will be deleted to prevent messages to appear`
-        );
-        deleteReport(serverId);
-      }
       return;
     }
     match = matcher.exec(message.embeds[0].data.url);
     if (!match) {
-      if (
-        reportsPerServer.has(serverId) &&
-        reportsPerServer.get(serverId).channelId === message.channelId
-      ) {
-        logger.info(
-          `Conversation detected in channel ${message.channelId} from server ${serverId}, the current report will be deleted to prevent messages to appear`
-        );
-        deleteReport(serverId);
-      }
       return;
     }
   }

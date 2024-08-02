@@ -43,11 +43,7 @@ export function createEmbed(
     );
   if (withAutoRefreshMessage) {
     embed.setFooter({
-      text: "This report is updated every minute.",
-    });
-  } else {
-    embed.setFooter({
-      text: "This report will not be updated.",
+      text: "This report is updated regularly.",
     });
   }
 
@@ -60,7 +56,7 @@ export function createEmbed(
     let fieldCount = 2;
     for (let [encounterName, fights] of report.fights.entries()) {
       if (fieldCount + 3 > 25) {
-        return { embeds: [embed] };
+        return embed;
       }
       const bestPull = getBestPull(fights);
 
@@ -73,6 +69,10 @@ export function createEmbed(
     }
   }
   return embed;
+}
+
+export function removeFooter(oldEmbed) {
+  return EmbedBuilder.from(oldEmbed).setFooter(null);
 }
 
 export function createStatsEmbed(serverCalls) {
