@@ -68,7 +68,8 @@ function sendReport(
         .embedMessage.edit({ embeds: [oldEmbed] })
         .catch((error) => {
           logger.error(
-            `Error while editing message for report ${serverReport.reportCode}`
+            `Error while editing message for report ${reportsPerServer
+        .get(serverId).reportCode}`
           );
           logger.error(error);
         });
