@@ -364,7 +364,7 @@ parsingway.on(Events.MessageCreate, (message) => {
       } on server ${serverId}`
     );
     const serverReport = reportsPerServer.get(serverId);
-    clearInterval(reportsPerServer.get(serverId).timeoutId);
+    clearInterval(serverReport.timeoutId);
     let embed = serverReport.embedMessage?.embeds[0];
       if (embed) {
         embed = removeFooter(embed);
