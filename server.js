@@ -57,7 +57,6 @@ function sendReport(
 ) {
   if (
     reportsPerServer.has(serverId) &&
-    reportsPerServer.get(serverId).reportCode === code &&
     reportsPerServer.get(serverId).embedMessage
   ) {
     let oldEmbed = reportsPerServer.get(serverId).embedMessage.embeds[0];
@@ -68,8 +67,9 @@ function sendReport(
         .embedMessage.edit({ embeds: [oldEmbed] })
         .catch((error) => {
           logger.error(
-            `Error while editing message for report ${reportsPerServer
-        .get(serverId).reportCode}`
+            `Error while editing message for report ${
+              reportsPerServer.get(serverId).reportCode
+            }`
           );
           logger.error(error);
         });
@@ -78,83 +78,80 @@ function sendReport(
   const embed = createEmbed(report, code, reportUrl, withAutoRefreshMessage);
   channel
     .send({ embeds: [embed], flags: MessageFlags.SuppressNotifications })
-    .then(
-      setServerReport(report, serverId, reportUrl, code, channel, saveNewReport)
-    );
+    .then((message) => {
+      if (saveNewReport) {
+        addNewServerReport(serverId, reportUrl, code, report, channel, message);
+      } else if (!canTrackReport(serverId)) {
+        logger.warn(`Report ${code} will not be tracked`);
+      }
+    });
 }
 
-function setServerReport(
+function addNewServerReport(
+  serverId,
+  reportUrl,
+  code,
   report,
-  serverId,
-  reportUrl,
-  code,
   channel,
-  saveNewReport
+  message
 ) {
-  return (sentMessage) => {
-    const reportHash = report.getHash();
-    const reportEndOfLife = LocalDateTime.now().plusSeconds(REPORT_TTL);
-    if (reportsPerServer.has(serverId)) {
-      updateServerReport(
-        serverId,
-        reportUrl,
-        reportEndOfLife,
-        sentMessage,
-        code,
-        channel,
-        reportHash,
-        report
-      );
-      return;
-    }
-    if (saveNewReport) {
-      reportsPerServer.set(
-        serverId,
-        new ServerReport(
-          reportUrl,
-          code,
-          reportEndOfLife,
-          report.endTime,
-          sentMessage,
-          channel.id,
-          reportHash
-        )
-      );
-      reportsPerServer.get(serverId).timeoutId = setInterval(
-        updateReport,
-        REPORT_UPDATE_DELAY,
-        serverId
-      );
-      logger.info(`Added report ${code} from ${serverId} to tracked reports`);
-    } else if (!canTrackReport(serverId)) {
-      logger.warn("Cannot track more reports");
-    }
-  };
-}
-
-function updateServerReport(
-  serverId,
-  reportUrl,
-  reportEndOfLife,
-  sentMessage,
-  code,
-  channel,
-  reportHash,
-  report
-) {
-  reportsPerServer.get(serverId).reportUrl = reportUrl;
-  reportsPerServer.get(serverId).endOfLife = reportEndOfLife;
-  reportsPerServer.get(serverId).embedMessage = sentMessage;
-  reportsPerServer.get(serverId).reportCode = code;
-  reportsPerServer.get(serverId).channelId = channel.id;
-  reportsPerServer.get(serverId).reportHash = reportHash;
-  reportsPerServer.get(serverId).reportEndTime = report.endTime;
-  clearInterval(reportsPerServer.get(serverId).timeoutId);
+  reportsPerServer.set(
+    serverId,
+    new ServerReport(
+      reportUrl,
+      code,
+      getReportEndOfLife(),
+      report.endTime,
+      message,
+      channel.id,
+      report.getHash()
+    )
+  );
   reportsPerServer.get(serverId).timeoutId = setInterval(
     updateReport,
     REPORT_UPDATE_DELAY,
     serverId
   );
+  logger.info(`Added report ${code} from ${serverId} to tracked reports`);
+}
+
+function getReportEndOfLife() {
+  return LocalDateTime.now().plusSeconds(REPORT_TTL);
+}
+
+function updateServerReportData(report, serverId, reportUrl, code, channel) {
+  return (sentMessage) => {
+    if (!reportsPerServer.has(serverId)) {
+      return;
+    }
+    setServerReportData(
+      serverId,
+      reportUrl,
+      sentMessage,
+      code,
+      channel,
+      report.getHash(),
+      report.endTime
+    );
+  };
+}
+
+function setServerReportData(
+  serverId,
+  reportUrl,
+  sentMessage,
+  code,
+  channel,
+  reportHash,
+  endTime
+) {
+  reportsPerServer.get(serverId).reportUrl = reportUrl;
+  reportsPerServer.get(serverId).endOfLife = getReportEndOfLife();
+  reportsPerServer.get(serverId).embedMessage = sentMessage;
+  reportsPerServer.get(serverId).reportCode = code;
+  reportsPerServer.get(serverId).channelId = channel.id;
+  reportsPerServer.get(serverId).reportHash = reportHash;
+  reportsPerServer.get(serverId).reportEndTime = endTime;
 }
 
 function deleteReport(serverId, updateMessage = false) {
@@ -233,13 +230,12 @@ function updateReport(serverId) {
       originalMessage
         .edit({ embeds: [embed] })
         .then(
-          setServerReport(
+          updateServerReportData(
             newReport,
             serverId,
             serverReport.reportUrl,
             serverReport.reportCode,
-            originalMessage.channel,
-            false
+            originalMessage.channel
           )
         )
         .catch((error) => {
@@ -298,6 +294,27 @@ async function printCurrentReports(message) {
       },
     ],
   });
+}
+
+function stopPreviousReportUpdates(serverId) {
+  logger.info(
+    `Clearing previous report auto refresh for report ${
+      reportsPerServer.get(serverId).reportCode
+    } on server ${serverId}`
+  );
+  const serverReport = reportsPerServer.get(serverId);
+  clearInterval(serverReport.timeoutId);
+  let embed = serverReport.embedMessage?.embeds[0];
+  if (embed) {
+    embed = removeFooter(embed);
+
+    serverReport.embedMessage.edit({ embeds: [embed] }).catch((error) => {
+      logger.error(
+        `Error while editing message for report ${serverReport.reportCode}`
+      );
+      logger.error(error);
+    });
+  }
 }
 
 const reportsPerServer = new Map();
@@ -359,24 +376,7 @@ parsingway.on(Events.MessageCreate, (message) => {
     reportsPerServer.has(serverId) &&
     reportsPerServer.get(serverId).timeoutId
   ) {
-    logger.info(
-      `Clearing previous report auto refresh for report ${
-        reportsPerServer.get(serverId).reportCode
-      } on server ${serverId}`
-    );
-    const serverReport = reportsPerServer.get(serverId);
-    clearInterval(serverReport.timeoutId);
-    let embed = serverReport.embedMessage?.embeds[0];
-    if (embed) {
-      embed = removeFooter(embed);
-
-      serverReport.embedMessage.edit({ embeds: [embed] }).catch((error) => {
-        logger.error(
-          `Error while editing message for report ${serverReport.reportCode}`
-        );
-        logger.error(error);
-      });
-    }
+    stopPreviousReportUpdates(serverId);
   }
   logger.info(`Received new report ${code} from ${serverId}`);
   reportService.synthesize(code).then(
