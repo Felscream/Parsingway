@@ -62,9 +62,12 @@ export function createEmbed(
 
       embed.addFields(
         createEncounterTitle(encounterName, fights),
-        createBestPullField(bestPull),
-        createBestPullLinks(reportUrl, reportCode, bestPull)
+        createBestPullField(bestPull)
       );
+      if (bestPull.speedRanking) {
+        embed.addFields(createBestPullSpeedRanking(bestPull));
+      }
+      embed.addFields(createBestPullLinks(reportUrl, reportCode, bestPull));
       fieldCount += 3;
     }
   }
@@ -138,6 +141,18 @@ function createBestPullField(bestPull) {
     value: `**${bestPull.killOrWipeNumber}.** ${bestPull.duration.format(
       DURATION_FORMATTER
     )} ${phase}${percentage}`,
+    inline: true,
+  };
+}
+
+function createBestPullSpeedRanking(bestPull) {
+  let rank = `Top ${100 - bestPull.speedRanking}%`;
+  if (bestPull.speedRanking === 100) {
+    rank = "1st";
+  }
+  return {
+    name: "Speed Ranking",
+    value: rank,
     inline: true,
   };
 }

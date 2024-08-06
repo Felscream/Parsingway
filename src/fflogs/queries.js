@@ -8,6 +8,7 @@ const reportQuery = gql`
         startTime
         endTime
         fights {
+          id
           encounterID
           name
           bossPercentage
@@ -18,6 +19,7 @@ const reportQuery = gql`
           endTime
           lastPhase
         }
+        rankings(playerMetric: playerspeed)
       }
     }
   }

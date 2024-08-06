@@ -70,13 +70,22 @@ class ReportService {
           rawPull.fight.lastPhase,
           encounterNumber,
           rawPull.fight.encounterID,
-          rawPull.fightNumber
+          rawPull.fightNumber,
+          findPullSpeedRanking(rawPull, report.rankings.data)
         );
         fights.get(name).push(pull);
       });
     }
     return fights;
   }
+}
+
+function findPullSpeedRanking(rawPull, rankings) {
+  const rank = rankings.find((el) => el.fightID === rawPull.fight.id);
+  if (rank === undefined) {
+    return null;
+  }
+  return rank.speed?.rankPercent || null;
 }
 
 function getHighestDifficultyFights(fights) {
@@ -203,7 +212,8 @@ class Pull {
     lastPhase,
     killOrWipeNumber,
     encounterID,
-    fightNumber
+    fightNumber,
+    speedRanking
   ) {
     this.bossPercentage = bossPercentage;
     this.fightPercentage = fightPercentage;
@@ -213,6 +223,7 @@ class Pull {
     this.killOrWipeNumber = killOrWipeNumber;
     this.encounterID = encounterID;
     this.fightNumber = fightNumber;
+    this.speedRanking = speedRanking;
   }
 }
 export { ReportService, Report, Pull };
