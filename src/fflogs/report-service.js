@@ -213,7 +213,8 @@ class Pull {
     killOrWipeNumber,
     encounterID,
     fightNumber,
-    speedRanking
+    speedRanking,
+    remainingHealth
   ) {
     this.bossPercentage = bossPercentage;
     this.fightPercentage = fightPercentage;

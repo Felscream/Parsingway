@@ -64,8 +64,10 @@ export function createEmbed(
         createEncounterTitle(encounterName, fights),
         createBestPullField(bestPull)
       );
-      if (bestPull.speedRanking) {
+      if (bestPull.kill && bestPull.speedRanking) {
         embed.addFields(createBestPullSpeedRanking(bestPull));
+      } else if (!bestPull.kill) {
+        embed.addFields(getBestPullRemainingHP(bestPull));
       }
       embed.addFields(createBestPullLinks(reportUrl, reportCode, bestPull));
       fieldCount += 3;
@@ -134,13 +136,11 @@ function createBestPullLinks(reportUrl, reportCode, bestPull) {
 }
 
 function createBestPullField(bestPull) {
-  const phase = buildPhaseText(bestPull);
-  const percentage = getBestPullInfo(bestPull);
   return {
     name: `Best ${bestPull.kill ? "kill" : "pull"}`,
     value: `**${bestPull.killOrWipeNumber}.** ${bestPull.duration.format(
       DURATION_FORMATTER
-    )} ${phase}${percentage}`,
+    )}`,
     inline: true,
   };
 }
@@ -172,10 +172,7 @@ function createEncounterTitle(encounterName, fights) {
 
 function buildPhaseText(bestPull) {
   if (bestPull.lastPhase !== 0 && !bestPull.kill) {
-    return `- P${bestPull.lastPhase} `;
-  }
-  if (!bestPull.kill) {
-    return "- ";
+    return `P${bestPull.lastPhase} - `;
   }
 
   return "";
@@ -216,11 +213,13 @@ function getBestPull(pulls) {
   });
 }
 
-function getBestPullInfo(bestPull) {
-  if (!bestPull.kill) {
-    return `${bestPull.bossPercentage}%`;
-  }
-  return "";
+function getBestPullRemainingHP(bestPull) {
+  const phase = buildPhaseText(bestPull);
+  return {
+    name: "Remaining HP",
+    value: `${phase}${bestPull.bossPercentage}%`,
+    inline: true,
+  };
 }
 
 function getWipes(pulls) {
