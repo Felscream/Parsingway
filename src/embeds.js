@@ -216,7 +216,7 @@ function getBestPull(pulls) {
 function getBestPullRemainingHP(bestPull) {
   const phase = buildPhaseText(bestPull);
   return {
-    name: "Remaining HP",
+    name: "Remaining Health",
     value: `${phase}${bestPull.bossPercentage}%`,
     inline: true,
   };
