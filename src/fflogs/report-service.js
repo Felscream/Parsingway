@@ -85,7 +85,7 @@ function findPullSpeedRanking(rawPull, rankings) {
   if (rank === undefined) {
     return null;
   }
-  return rank.speed?.rankPercent || null;
+  return isNaN(rank.speed?.rankPercent) ? null : rank.speed.rankPercent;
 }
 
 function getHighestDifficultyFights(fights) {
