@@ -174,8 +174,9 @@ function deleteReport(serverId, updateMessage = false) {
       }
     }
 
-    reportsPerServer.delete(serverId);
+    return reportsPerServer.delete(serverId);
   }
+  return false;
 }
 
 function updateReport(serverId) {
@@ -317,6 +318,19 @@ function stopPreviousReportUpdates(serverId) {
   }
 }
 
+function removeAllReports() {
+  logger.warn("All currently saved reports will be removed");
+  let deletedReportCount = 0;
+  const serverIds = reportsPerServer.keys();
+  for (const serverId of serverIds) {
+    const removed = deleteReport(serverId, true);
+    if (removed) {
+      deletedReportCount++;
+    }
+  }
+  logger.info(`${deletedReportCount} reports were removed`);
+}
+
 const reportsPerServer = new Map();
 const token = config.get("token");
 const parsingway = new Client({
@@ -345,9 +359,16 @@ parsingway.on(Events.MessageCreate, (message) => {
     return;
   }
 
-  if (message.author.id === ADMIN_ID && message.content === "!stats") {
-    printCurrentReports(message);
-    return;
+  if (message.author.id === ADMIN_ID) {
+    if (message.content === "!stats") {
+      printCurrentReports(message);
+      return;
+    }
+
+    if (message.content === "!clearAll") {
+      removeAllReports();
+      return;
+    }
   }
 
   const serverId = message.guildId;
