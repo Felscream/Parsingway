@@ -151,7 +151,7 @@ function createBestPullSpeedRanking(bestPull) {
     rank = "1st";
   }
   return {
-    name: "Speed Ranking",
+    name: "Speed ranking",
     value: rank,
     inline: true,
   };
@@ -216,7 +216,7 @@ function getBestPull(pulls) {
 function getBestPullRemainingHP(bestPull) {
   const phase = buildPhaseText(bestPull);
   return {
-    name: "Remaining Health",
+    name: "Remaining health",
     value: `${phase}${bestPull.bossPercentage}%`,
     inline: true,
   };
