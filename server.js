@@ -10,7 +10,7 @@ import { ReportService } from "./src/fflogs/report-service.js";
 import { Duration, LocalDateTime, ZonedDateTime } from "js-joda";
 import { createEmbed, removeFooter, createStatsEmbed } from "./src/embeds.js";
 import logger from "./logger.js";
-import ServerReport from "./src/server-report.js";
+import ServerReport from "./src/model/server-report.js";
 import CooldownService from "./src/cooldown-service.js";
 import help from "./src/commands/utility/help.js";
 import {
@@ -59,7 +59,8 @@ function sendReport(
     reportsPerServer.has(serverId) &&
     reportsPerServer.get(serverId).embedMessage
   ) {
-    let oldEmbed = reportsPerServer.get(serverId).embedMessage.embeds[0];
+    const serverReport = reportsPerServer.get(serverId);
+    let oldEmbed = serverReport.embedMessage.embeds[0];
     if (oldEmbed) {
       oldEmbed = removeFooter(oldEmbed);
       reportsPerServer
@@ -67,9 +68,7 @@ function sendReport(
         .embedMessage.edit({ embeds: [oldEmbed] })
         .catch((error) => {
           logger.error(
-            `Error while editing message for report ${
-              reportsPerServer.get(serverId).reportCode
-            }`
+            `Error while editing message for report ${serverReport.reportCode} by ${serverReport.owner}`
           );
           logger.error(error);
         });
@@ -104,7 +103,8 @@ function addNewServerReport(
       report.endTime,
       message,
       channel.id,
-      report.getHash()
+      report.getHash(),
+      report.getOwner()
     )
   );
   reportsPerServer.get(serverId).timeoutId = setInterval(
@@ -158,7 +158,9 @@ function deleteReport(serverId, updateMessage = false) {
   if (reportsPerServer.has(serverId)) {
     const serverReport = reportsPerServer.get(serverId);
     const reportCode = serverReport.reportCode;
-    logger.info(`Deleting report ${reportCode} from server ${serverId}`);
+    logger.info(
+      `Deleting report ${reportCode} from server ${serverId} by ${serverReport.owner}`
+    );
     clearInterval(serverReport.timeoutId);
     if (updateMessage) {
       let embed = serverReport.embedMessage?.embeds[0];
@@ -167,7 +169,7 @@ function deleteReport(serverId, updateMessage = false) {
 
         serverReport.embedMessage.edit({ embeds: [embed] }).catch((error) => {
           logger.error(
-            `Error while editing message for report ${serverReport.reportCode}`
+            `Error while editing message for report ${serverReport.reportCode} by ${serverReport.owner}`
           );
           logger.error(error);
         });
@@ -201,7 +203,7 @@ function updateReport(serverId) {
       const newReportHash = newReport.getHash();
       if (newReportHash === serverReport.reportHash) {
         logger.info(
-          `Report ${serverReport.reportCode} from server ${serverId} has not changed, no update required`
+          `Report ${serverReport.reportCode} by ${serverReport.owner} on server ${serverId}  has not changed, no update required`
         );
         if (
           Duration.between(
@@ -210,7 +212,7 @@ function updateReport(serverId) {
           ).seconds() > 0
         ) {
           logger.info(
-            `No changes detected for a long period on report ${serverReport.reportCode} from server ${serverId}, it will be deleted`
+            `No changes detected for a long period on report ${serverReport.reportCode} by ${serverReport.owner} on server ${serverId}, it will be deleted`
           );
           deleteReport(serverId, true);
         }
@@ -218,7 +220,7 @@ function updateReport(serverId) {
       }
 
       logger.info(
-        `Changes detected on report ${serverReport.reportCode} from server ${serverId}, updating ...`
+        `Changes detected on report ${serverReport.reportCode} by ${serverReport.owner} on server ${serverId}, updating ...`
       );
 
       const embed = createEmbed(
@@ -241,7 +243,7 @@ function updateReport(serverId) {
         )
         .catch((error) => {
           logger.error(
-            `Error while editing message for report ${serverReport.reportCode}, it will be deleted`
+            `Error while editing message for report ${serverReport.reportCode} by ${serverReport.owner}. It will be deleted`
           );
           logger.error(error);
           deleteReport(serverId);
@@ -298,12 +300,11 @@ async function printCurrentReports(message) {
 }
 
 function stopPreviousReportUpdates(serverId) {
-  logger.info(
-    `Clearing previous report auto refresh for report ${
-      reportsPerServer.get(serverId).reportCode
-    } on server ${serverId}`
-  );
   const serverReport = reportsPerServer.get(serverId);
+  logger.info(
+    `Clearing previous report auto refresh for report ${serverReport.reportCode} by ${serverReport.owner} on server ${serverId}`
+  );
+
   clearInterval(serverReport.timeoutId);
   let embed = serverReport.embedMessage?.embeds[0];
   if (embed) {
@@ -311,7 +312,7 @@ function stopPreviousReportUpdates(serverId) {
 
     serverReport.embedMessage.edit({ embeds: [embed] }).catch((error) => {
       logger.error(
-        `Error while editing message for report ${serverReport.reportCode}`
+        `Error while editing message for report ${serverReport.reportCode} by ${serverReport.owner}`
       );
       logger.error(error);
     });

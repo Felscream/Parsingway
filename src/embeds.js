@@ -1,4 +1,4 @@
-import { Embed, EmbedBuilder } from "discord.js";
+import { EmbedBuilder } from "discord.js";
 import { DateTimeFormatter, Duration, LocalTime } from "js-joda";
 import encounterThumbnails from "../resources/encounter_thumbail.json" assert { type: "json" };
 

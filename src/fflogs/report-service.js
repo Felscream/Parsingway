@@ -1,7 +1,8 @@
 import { Duration, Instant, ZoneId, ZonedDateTime } from "js-joda";
 import FflogsClient from "./fflogs-client.js";
 import { LocalTime } from "js-joda";
-import objectHash from "object-hash";
+import Pull from "../model/pull.js";
+import Report from "../model/report.js";
 
 class ReportService {
   constructor(fflogsConfiguration, maxEncounters) {
@@ -36,7 +37,9 @@ class ReportService {
       rawReport.title,
       startTime,
       endTime,
-      this.buildFights(rawReport)
+      this.buildFights(rawReport),
+      rawReport.owner?.name,
+      rawReport.guild?.name
     );
     return new Promise((resolve, reject) => {
       resolve(report);
@@ -190,41 +193,4 @@ function getPullNumber(killAndWipes, curIndex, encounter) {
   return killOrWipeNumber + 1;
 }
 
-class Report {
-  constructor(title, startTime, endTime, fights) {
-    this.title = title;
-    this.startTime = startTime;
-    this.endTime = endTime;
-    this.fights = fights;
-  }
-
-  getHash() {
-    return objectHash.sha1(this, { excludeKeys: (key) => key === "endTime" });
-  }
-}
-
-class Pull {
-  constructor(
-    bossPercentage,
-    fightPercentage,
-    isKill,
-    duration,
-    lastPhase,
-    killOrWipeNumber,
-    encounterID,
-    fightNumber,
-    speedRanking,
-    remainingHealth
-  ) {
-    this.bossPercentage = bossPercentage;
-    this.fightPercentage = fightPercentage;
-    this.kill = isKill;
-    this.duration = duration;
-    this.lastPhase = lastPhase;
-    this.killOrWipeNumber = killOrWipeNumber;
-    this.encounterID = encounterID;
-    this.fightNumber = fightNumber;
-    this.speedRanking = speedRanking;
-  }
-}
-export { ReportService, Report, Pull };
+export { ReportService };

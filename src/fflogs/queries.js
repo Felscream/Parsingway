@@ -7,6 +7,12 @@ const reportQuery = gql`
         title
         startTime
         endTime
+        owner {
+          name
+        }
+        guild {
+          name
+        }
         fights {
           id
           encounterID

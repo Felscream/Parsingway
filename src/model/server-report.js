@@ -6,7 +6,8 @@ export default class ServerReport {
     endTime,
     embedMessage,
     channelId,
-    reportHash
+    reportHash,
+    owner
   ) {
     this.reportUrl = reportUrl;
     this.reportCode = reportCode;
@@ -16,5 +17,6 @@ export default class ServerReport {
     this.channelId = channelId;
     this.reportHash = reportHash;
     this.timeoutId = null;
+    this.owner = owner;
   }
 }
