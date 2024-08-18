@@ -26,8 +26,8 @@ export function createEmbed(
 ) {
   const embed = new EmbedBuilder()
     .setTitle(report.title || "Report")
-    .setColor(hasKillOnReport(report.fights) ? KILL_COLOR : WIPE_COLOR)
-    .setThumbnail(getThumbnail(report.fights))
+    .setColor(hasKillOnReport(report.encounters) ? KILL_COLOR : WIPE_COLOR)
+    .setThumbnail(getThumbnail(report.encounters))
     .setURL(reportUrl)
     .addFields(
       {
@@ -47,29 +47,31 @@ export function createEmbed(
     });
   }
 
-  if (report.fights.size === 0) {
+  if (report.encounters.size === 0) {
     embed.addFields({
       name: `No encounters detected yet`,
       value: "Come back later !",
     });
   } else {
     let fieldCount = 2;
-    for (let [encounterName, fights] of report.fights.entries()) {
+    for (let [encounterName, encounter] of report.encounters.entries()) {
       if (fieldCount + 3 > 25) {
         return embed;
       }
-      const bestPull = getBestPull(fights);
+      const bestPullRanking = encounter.rankings;
 
       embed.addFields(
-        createEncounterTitle(encounterName, fights),
-        createBestPullField(bestPull)
+        createEncounterTitle(encounterName, encounter),
+        createBestPullField(bestPullRanking.pull)
       );
-      if (bestPull.kill && bestPull.speedRanking) {
-        embed.addFields(createBestPullSpeedRanking(bestPull));
-      } else if (!bestPull.kill) {
-        embed.addFields(getBestPullRemainingHP(bestPull));
+      if (bestPullRanking.pull.kill && bestPullRanking.ranking) {
+        embed.addFields(createBestPullSpeedRanking(bestPullRanking));
+      } else if (!bestPullRanking.pull.kill) {
+        embed.addFields(getBestPullRemainingHP(bestPullRanking.pull));
       }
-      embed.addFields(createBestPullLinks(reportUrl, reportCode, bestPull));
+      embed.addFields(
+        createBestPullLinks(reportUrl, reportCode, bestPullRanking.pull)
+      );
       fieldCount += 3;
     }
   }
@@ -146,8 +148,8 @@ function createBestPullField(bestPull) {
 }
 
 function createBestPullSpeedRanking(bestPull) {
-  let rank = `Top ${100 - bestPull.speedRanking}%`;
-  if (bestPull.speedRanking === 100) {
+  let rank = `Top ${100 - bestPull.ranking}%`;
+  if (bestPull.ranking === 100) {
     rank = "1st";
   }
   return {
@@ -157,10 +159,10 @@ function createBestPullSpeedRanking(bestPull) {
   };
 }
 
-function createEncounterTitle(encounterName, fights) {
-  const wipes = getWipes(fights);
-  const totalDuration = getTotalDuration(fights);
-  const killCount = fights.length - wipes;
+function createEncounterTitle(encounterName, encounter) {
+  const wipes = getWipes(encounter.fights);
+  const totalDuration = getTotalDuration(encounter.fights);
+  const killCount = encounter.fights.length - wipes;
   const killDisplay =
     killCount > 0 ? `${SPACER} ${BATTLE_EMOJI} ${killCount}` : "";
   const wipeDisplay = wipes > 0 ? `${SPACER} ${PLAY_DEAD_EMOJI} ${wipes}` : "";
@@ -227,9 +229,9 @@ function getWipes(pulls) {
 }
 
 function hasKillOnReport(encounters) {
-  for (let fight of encounters.values()) {
-    for (let i = 0; i < fight.length; i++) {
-      if (fight[i].kill) {
+  for (let encounter of encounters.values()) {
+    for (let i = 0; i < encounter.fights.length; i++) {
+      if (encounter.fights[i].kill) {
         return true;
       }
     }
@@ -237,11 +239,13 @@ function hasKillOnReport(encounters) {
   return false;
 }
 
-function getThumbnail(fights) {
-  if (fights.size === 0) {
+function getThumbnail(encounters) {
+  if (encounters.size === 0) {
     return DEFAULT_THUMBNAIL_URL;
   }
-  const mostPlayedEncounterId = fights.values().next().value[0].encounterID;
+
+  const fights = encounters.values().next().value.fights;
+  const mostPlayedEncounterId = fights[0].encounterID;
   if (encounterThumbnails.hasOwnProperty(mostPlayedEncounterId)) {
     return encounterThumbnails[mostPlayedEncounterId].thumbnail;
   }

@@ -3,6 +3,9 @@ import FflogsClient from "./fflogs-client.js";
 import { LocalTime } from "js-joda";
 import Pull from "../model/pull.js";
 import Report from "../model/report.js";
+import SpeedRanking from "../model/speed-ranking.js";
+import Encounter from "../model/encounter.js";
+import logger from "../../logger.js";
 
 class ReportService {
   constructor(fflogsConfiguration, maxEncounters) {
@@ -22,10 +25,42 @@ class ReportService {
       return Promise.reject(error);
     }
 
-    return this.buildReport(data.reportData.report);
+    return await this.buildReport(data.reportData.report, reportCode);
   }
 
-  buildReport(rawReport) {
+  async getSpeedRanking(reportCode, encounters) {
+    const fightIDs = [];
+    for (let encounter of encounters.values()) {
+      if (encounter.kill) {
+        fightIDs.push(encounter.fightID);
+      }
+    }
+
+    if (fightIDs.length == 0) {
+      return Promise.reject("No rankings to retrieve");
+    }
+
+    let rankings = null;
+
+    try {
+      rankings = await this.fflogsClient.getSpeedRanking(reportCode, fightIDs);
+    } catch (error) {
+      return Promise.reject(error);
+    }
+
+    rankings = rankings.reportData.report.rankings.data
+      .filter((ranking) => !isNaN(ranking.speed.rankPercent))
+      .map((ranking) => {
+        return {
+          fightID: ranking.fightID,
+          speedRanking: ranking.speed.rankPercent,
+        };
+      });
+
+    return Promise.resolve(rankings);
+  }
+
+  async buildReport(rawReport, reportCode) {
     const startInstant = Instant.ofEpochMilli(rawReport.startTime);
     const startTime = ZonedDateTime.ofInstant(
       startInstant,
@@ -33,11 +68,22 @@ class ReportService {
     );
     const endInstant = Instant.ofEpochMilli(rawReport.endTime);
     const endTime = ZonedDateTime.ofInstant(endInstant, ZoneId.systemDefault());
+
+    const encounters = this.buildFights(rawReport);
+    const bestPulls = getBestPulls(encounters);
+    consolidateEncountersWithBestPull(encounters, bestPulls);
+    try {
+      const rankings = await this.getSpeedRanking(reportCode, bestPulls);
+      consolidateEncountersWithRanking(encounters, bestPulls, rankings);
+    } catch (error) {
+      logger.error(error);
+    }
+
     const report = new Report(
       rawReport.title,
       startTime,
       endTime,
-      this.buildFights(rawReport),
+      encounters,
       rawReport.owner?.name,
       rawReport.guild?.name
     );
@@ -47,17 +93,17 @@ class ReportService {
   }
 
   buildFights(report) {
-    const encounters = getHighestDifficultyFights(report.fights);
+    const highDifficultyFights = getHighestDifficultyFights(report.fights);
     const sortedEncounters = sortEncountersByPullNumber(
-      encounters,
+      highDifficultyFights,
       this.maxEncounters || 1
     );
 
-    const fights = new Map();
+    const encounters = new Map();
     const killsAndWipes = getKillAndWipeNumbers(sortedEncounters);
     for (let [name, rawPulls] of sortedEncounters.entries()) {
-      if (!fights.has(name)) {
-        fights.set(name, []);
+      if (!encounters.has(name)) {
+        encounters.set(name, new Encounter());
       }
       rawPulls.forEach((rawPull, index) => {
         const encounterNumber = getPullNumber(killsAndWipes, index, name);
@@ -66,6 +112,7 @@ class ReportService {
           ZoneId.UTC
         );
         const pull = new Pull(
+          rawPull.fight.id,
           rawPull.fight.bossPercentage,
           rawPull.fight.fightPercentage,
           rawPull.fight.kill,
@@ -73,22 +120,74 @@ class ReportService {
           rawPull.fight.lastPhase,
           encounterNumber,
           rawPull.fight.encounterID,
-          rawPull.fightNumber,
-          findPullSpeedRanking(rawPull, report.rankings.data)
+          rawPull.fightNumber
         );
-        fights.get(name).push(pull);
+        encounters.get(name).addFight(pull);
       });
     }
-    return fights;
+    return encounters;
   }
 }
 
-function findPullSpeedRanking(rawPull, rankings) {
-  const rank = rankings.find((el) => el.fightID === rawPull.fight.id);
-  if (rank === undefined) {
-    return null;
+function getBestPulls(encounters) {
+  const bestPulls = new Map();
+  for (let [name, encounter] of encounters.entries()) {
+    const bestPull = getBestPull(encounter.fights);
+    bestPulls.set(name, bestPull);
   }
-  return isNaN(rank.speed?.rankPercent) ? null : rank.speed.rankPercent;
+
+  return bestPulls;
+}
+
+function consolidateEncountersWithBestPull(encounters, bestPulls) {
+  for (let encounterName of bestPulls.keys()) {
+    encounters.get(encounterName).rankings = new SpeedRanking(
+      bestPulls.get(encounterName)
+    );
+  }
+}
+
+function consolidateEncountersWithRanking(encounters, bestPulls, rankings) {
+  for (let encounterName of bestPulls.keys()) {
+    if (
+      rankings.findIndex(
+        (ranking) => ranking.fightID === bestPulls.get(encounterName).fightID
+      ) > -1
+    ) {
+      const rank = rankings.find(
+        (ranking) => ranking.fightID === bestPulls.get(encounterName).fightID
+      );
+      encounters.get(encounterName).rankings = new SpeedRanking(
+        bestPulls.get(encounterName),
+        rank.speedRanking
+      );
+    }
+  }
+}
+
+function getBestPull(pulls) {
+  return pulls.reduce((prev, curr) => {
+    if (!prev.kill && curr.kill) {
+      return curr;
+    }
+
+    if (prev.kill && !curr.kill) {
+      return prev;
+    }
+
+    if (prev.kill && curr.kill && prev.duration > curr.duration) {
+      return curr;
+    }
+
+    if (prev.kill && curr.kill && prev.duration < curr.duration) {
+      return prev;
+    }
+
+    if (prev.fightPercentage > curr.fightPercentage) {
+      return curr;
+    }
+    return prev;
+  });
 }
 
 function getHighestDifficultyFights(fights) {
@@ -151,7 +250,10 @@ function getEncounterWithMostPulls(fights) {
   let pullCount = -1;
   let encounterName = "";
   for (let [key, fight] of fights.entries()) {
-    if (fight.length > pullCount) {
+    if (
+      fight.length > pullCount ||
+      (fight.length === pullCount && fight.encounterID > encounterId)
+    ) {
       pullCount = fight.length;
       encounterId = fight[0].fight.encounterID;
       encounterName = key;

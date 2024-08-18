@@ -1,5 +1,5 @@
 import { GraphQLClient } from "graphql-request";
-import { reportQuery } from "./queries.js";
+import { reportQuery, speedRankingQuery } from "./queries.js";
 
 export default class FflogsClient {
   constructor(fflogsConfig) {
@@ -52,5 +52,13 @@ export default class FflogsClient {
     }
     const variables = { reportCode };
     return await this.client.request(reportQuery, variables);
+  }
+
+  async getSpeedRanking(reportCode, fightIDs) {
+    if (this.needToRefreshToken()) {
+      await this.init();
+    }
+    const variables = { reportCode, fightIDs };
+    return await this.client.request(speedRankingQuery, variables);
   }
 }

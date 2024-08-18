@@ -1,11 +1,11 @@
 import objectHash from "object-hash";
 
 export default class Report {
-  constructor(title, startTime, endTime, fights, owner, guild) {
+  constructor(title, startTime, endTime, encounters, owner, guild) {
     this.title = title;
     this.startTime = startTime;
     this.endTime = endTime;
-    this.fights = fights;
+    this.encounters = encounters;
     this.owner = owner;
     this.guild = guild;
   }

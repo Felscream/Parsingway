@@ -25,10 +25,19 @@ const reportQuery = gql`
           endTime
           lastPhase
         }
-        rankings(playerMetric: playerspeed)
       }
     }
   }
 `;
 
-export { reportQuery };
+const speedRankingQuery = gql`
+  query getSpeedRanking($reportCode: String!, $fightIDs: [Int]) {
+    reportData {
+      report(code: $reportCode) {
+        rankings(fightIDs: $fightIDs, playerMetric: playerspeed)
+      }
+    }
+  }
+`;
+
+export { reportQuery, speedRankingQuery };

@@ -1,5 +1,6 @@
 export default class Pull {
   constructor(
+    fightID,
     bossPercentage,
     fightPercentage,
     isKill,
@@ -7,9 +8,9 @@ export default class Pull {
     lastPhase,
     killOrWipeNumber,
     encounterID,
-    fightNumber,
-    speedRanking
+    fightNumber
   ) {
+    this.fightID = fightID;
     this.bossPercentage = bossPercentage;
     this.fightPercentage = fightPercentage;
     this.kill = isKill;
@@ -18,6 +19,5 @@ export default class Pull {
     this.killOrWipeNumber = killOrWipeNumber;
     this.encounterID = encounterID;
     this.fightNumber = fightNumber;
-    this.speedRanking = speedRanking;
   }
 }
