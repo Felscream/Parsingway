@@ -190,31 +190,6 @@ function getTotalDuration(fights) {
   return totalDuration.format(DURATION_FORMATTER);
 }
 
-function getBestPull(pulls) {
-  return pulls.reduce((prev, curr) => {
-    if (!prev.kill && curr.kill) {
-      return curr;
-    }
-
-    if (prev.kill && !curr.kill) {
-      return prev;
-    }
-
-    if (prev.kill && curr.kill && prev.duration > curr.duration) {
-      return curr;
-    }
-
-    if (prev.kill && curr.kill && prev.duration < curr.duration) {
-      return prev;
-    }
-
-    if (prev.fightPercentage > curr.fightPercentage) {
-      return curr;
-    }
-    return prev;
-  });
-}
-
 function getBestPullRemainingHP(bestPull) {
   const phase = buildPhaseText(bestPull);
   return {
