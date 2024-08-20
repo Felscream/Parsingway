@@ -3,9 +3,10 @@ import FflogsClient from "./fflogs-client.js";
 import { LocalTime } from "js-joda";
 import Pull from "../model/pull.js";
 import Report from "../model/report.js";
-import SpeedRanking from "../model/speed-ranking.js";
 import Encounter from "../model/encounter.js";
 import logger from "../../logger.js";
+import BestPullRanking from "../model/best-pull-ranking.js";
+import objectHash from "object-hash";
 
 class ReportService {
   constructor(fflogsConfiguration, maxEncounters) {
@@ -17,50 +18,112 @@ class ReportService {
     await this.fflogsClient.init();
   }
 
-  async synthesize(reportCode) {
+  async getReport(reportCode) {
     let data = null;
     try {
       data = await this.fflogsClient.getReport(reportCode);
     } catch (error) {
       return Promise.reject(error);
     }
-
-    return await this.buildReport(data.reportData.report, reportCode);
+    return Promise.resolve(data);
   }
 
-  async getSpeedRanking(reportCode, encounters) {
-    const fightIDs = [];
-    for (let encounter of encounters.values()) {
-      if (encounter.kill) {
-        fightIDs.push(encounter.fightID);
+  async synthesizeReport(reportCode, previousRankings = new Map()) {
+    const data = await this.getReport(reportCode);
+    return await this.buildNewReport(
+      data.reportData.report,
+      reportCode,
+      previousRankings
+    );
+  }
+
+  async buildBestPullRankings(
+    newEncounters,
+    reportCode,
+    previousBestPullRankings = new Map()
+  ) {
+    const bestPullRankings = new Map();
+    for (let [newEncounterID, newEncounter] of newEncounters.entries()) {
+      const newBestPull = newEncounter.bestPull;
+      let ranking = null;
+      if (
+        previousBestPullRankings.has(newEncounterID) &&
+        objectHash(newBestPull) ===
+          objectHash(previousBestPullRankings.get(newEncounterID).pull)
+      ) {
+        ranking = previousBestPullRankings.get(newEncounterID).ranking;
       }
+
+      bestPullRankings.set(
+        newEncounterID,
+        new BestPullRanking(newBestPull, ranking)
+      );
     }
+
+    let updatedRankings;
+    try {
+      updatedRankings = await this.getBestPullRankingPerEncounter(
+        reportCode,
+        bestPullRankings,
+        previousBestPullRankings
+      );
+    } catch (warning) {
+      logger.warn(warning);
+      return bestPullRankings;
+    }
+    for (let encounterID of updatedRankings.keys()) {
+      bestPullRankings.set(encounterID, updatedRankings.get(encounterID));
+    }
+    return bestPullRankings;
+  }
+
+  retrieveFightIDs(currentBestPullRankings) {
+    return Array.from(currentBestPullRankings.values())
+      .filter((curr) => curr.pull.kill && !curr.ranking)
+      .map((curr) => curr.pull.fightID);
+  }
+
+  async getBestPullRankingPerEncounter(reportCode, currentBestPullRankings) {
+    const bestPulls = Array.from(currentBestPullRankings.values()).map(
+      (pullRanking) => pullRanking.pull
+    );
+    const fightIDs = this.retrieveFightIDs(currentBestPullRankings);
 
     if (fightIDs.length == 0) {
-      return Promise.reject("No rankings to retrieve");
+      return Promise.reject(`No rankings to retrieve for report ${reportCode}`);
     }
 
-    let rankings = null;
+    logger.info(
+      `Retrieving new rankings for pulls ${fightIDs} for report ${reportCode}`
+    );
 
+    let rankings = null;
     try {
       rankings = await this.fflogsClient.getSpeedRanking(reportCode, fightIDs);
     } catch (error) {
       return Promise.reject(error);
     }
 
-    rankings = rankings.reportData.report.rankings.data
-      .filter((ranking) => !isNaN(ranking.speed.rankPercent))
-      .map((ranking) => {
-        return {
-          fightID: ranking.fightID,
-          speedRanking: ranking.speed.rankPercent,
-        };
+    const rankingsPerEncounter = new Map();
+    rankings.reportData.report.rankings.data
+      .filter((ranking) => !isNaN(ranking.speed?.rankPercent))
+      .forEach((ranking) => {
+        const speedRanking = ranking.speed?.rankPercent || null;
+        const currentPull = bestPulls.find(
+          (pull) => pull.encounterID === ranking.encounter.id
+        );
+        if (currentPull) {
+          rankingsPerEncounter.set(
+            ranking.encounter.id,
+            new BestPullRanking(currentPull, speedRanking)
+          );
+        }
       });
 
-    return Promise.resolve(rankings);
+    return Promise.resolve(rankingsPerEncounter);
   }
 
-  async buildReport(rawReport, reportCode) {
+  async buildNewReport(rawReport, reportCode, previousRankings) {
     const startInstant = Instant.ofEpochMilli(rawReport.startTime);
     const startTime = ZonedDateTime.ofInstant(
       startInstant,
@@ -70,14 +133,11 @@ class ReportService {
     const endTime = ZonedDateTime.ofInstant(endInstant, ZoneId.systemDefault());
 
     const encounters = this.buildFights(rawReport);
-    const bestPulls = getBestPulls(encounters);
-    consolidateEncountersWithBestPull(encounters, bestPulls);
-    try {
-      const rankings = await this.getSpeedRanking(reportCode, bestPulls);
-      consolidateEncountersWithRanking(encounters, bestPulls, rankings);
-    } catch (error) {
-      logger.error(error);
-    }
+    const bestPullRankings = await this.buildBestPullRankings(
+      encounters,
+      reportCode,
+      previousRankings
+    );
 
     const report = new Report(
       rawReport.title,
@@ -85,11 +145,10 @@ class ReportService {
       endTime,
       encounters,
       rawReport.owner?.name,
-      rawReport.guild?.name
+      rawReport.guild?.name,
+      bestPullRankings
     );
-    return new Promise((resolve, reject) => {
-      resolve(report);
-    });
+    return Promise.resolve(report);
   }
 
   buildFights(report) {
@@ -101,12 +160,16 @@ class ReportService {
 
     const encounters = new Map();
     const killsAndWipes = getKillAndWipeNumbers(sortedEncounters);
-    for (let [name, rawPulls] of sortedEncounters.entries()) {
-      if (!encounters.has(name)) {
-        encounters.set(name, new Encounter());
+    for (let [encounterID, rawPulls] of sortedEncounters.entries()) {
+      if (!encounters.has(encounterID)) {
+        encounters.set(encounterID, new Encounter());
       }
       rawPulls.forEach((rawPull, index) => {
-        const encounterNumber = getPullNumber(killsAndWipes, index, name);
+        const encounterNumber = getPullNumber(
+          killsAndWipes,
+          index,
+          encounterID
+        );
         const duration = LocalTime.ofInstant(
           Instant.ofEpochMilli(rawPull.fight.endTime - rawPull.fight.startTime),
           ZoneId.UTC
@@ -120,49 +183,30 @@ class ReportService {
           rawPull.fight.lastPhase,
           encounterNumber,
           rawPull.fight.encounterID,
-          rawPull.fightNumber
+          rawPull.fightNumber,
+          rawPull.fight.name
         );
-        encounters.get(name).addFight(pull);
+        encounters.get(encounterID).addFight(pull);
       });
     }
+    const bestPullsPerEncounters = getBestPullPerEncounter(encounters);
+    for (let encounterID of bestPullsPerEncounters.keys()) {
+      encounters.get(encounterID).bestPull =
+        bestPullsPerEncounters.get(encounterID);
+    }
+
     return encounters;
   }
 }
 
-function getBestPulls(encounters) {
+function getBestPullPerEncounter(encounters) {
   const bestPulls = new Map();
-  for (let [name, encounter] of encounters.entries()) {
+  for (let encounter of encounters.values()) {
     const bestPull = getBestPull(encounter.fights);
-    bestPulls.set(name, bestPull);
+    bestPulls.set(bestPull.encounterID, bestPull);
   }
 
   return bestPulls;
-}
-
-function consolidateEncountersWithBestPull(encounters, bestPulls) {
-  for (let encounterName of bestPulls.keys()) {
-    encounters.get(encounterName).rankings = new SpeedRanking(
-      bestPulls.get(encounterName)
-    );
-  }
-}
-
-function consolidateEncountersWithRanking(encounters, bestPulls, rankings) {
-  for (let encounterName of bestPulls.keys()) {
-    if (
-      rankings.findIndex(
-        (ranking) => ranking.fightID === bestPulls.get(encounterName).fightID
-      ) > -1
-    ) {
-      const rank = rankings.find(
-        (ranking) => ranking.fightID === bestPulls.get(encounterName).fightID
-      );
-      encounters.get(encounterName).rankings = new SpeedRanking(
-        bestPulls.get(encounterName),
-        rank.speedRanking
-      );
-    }
-  }
 }
 
 function getBestPull(pulls) {
@@ -193,18 +237,18 @@ function getBestPull(pulls) {
 function getHighestDifficultyFights(fights) {
   const pullsPerEncounters = new Map();
   fights.forEach((encounter, index) => {
-    if (!pullsPerEncounters.has(encounter.name)) {
-      pullsPerEncounters.set(encounter.name, []);
+    if (!pullsPerEncounters.has(encounter.encounterID)) {
+      pullsPerEncounters.set(encounter.encounterID, []);
     }
 
-    pullsPerEncounters.get(encounter.name).push({
+    pullsPerEncounters.get(encounter.encounterID).push({
       fight: encounter,
       fightNumber: index + 1,
     });
   });
 
   const highestDifficultyEncounters = new Map();
-  for (let [encounterName, encounters] of pullsPerEncounters.entries()) {
+  for (let [encounterID, encounters] of pullsPerEncounters.entries()) {
     let highestDifficulty = -1;
     for (let encounter of encounters) {
       if (encounter.fight.difficulty > highestDifficulty) {
@@ -224,12 +268,12 @@ function getHighestDifficultyFights(fights) {
         (highestDifficulty >= 100 || highestDifficulty === 11)
     );
 
-    if (!highestDifficultyEncounters.has(encounterName)) {
-      highestDifficultyEncounters.set(encounterName, []);
+    if (!highestDifficultyEncounters.has(encounterID)) {
+      highestDifficultyEncounters.set(encounterID, []);
     }
     highestDifficultyEncounters.set(
-      encounterName,
-      highestDifficultyEncounters.get(encounterName).concat(difficultEncounters)
+      encounterID,
+      highestDifficultyEncounters.get(encounterID).concat(difficultEncounters)
     );
   }
   return highestDifficultyEncounters;
@@ -238,9 +282,9 @@ function getHighestDifficultyFights(fights) {
 function sortEncountersByPullNumber(fights, maxEncounters) {
   const sortedFights = new Map();
   while (fights.size > 0 && sortedFights.size < maxEncounters) {
-    const encounter = getEncounterWithMostPulls(fights);
-    sortedFights.set(encounter.name, fights.get(encounter.name));
-    fights.delete(encounter.name);
+    const encounterID = getEncounterWithMostPulls(fights);
+    sortedFights.set(encounterID, fights.get(encounterID));
+    fights.delete(encounterID);
   }
   return sortedFights;
 }
@@ -248,35 +292,33 @@ function sortEncountersByPullNumber(fights, maxEncounters) {
 function getEncounterWithMostPulls(fights) {
   let encounterId = -1;
   let pullCount = -1;
-  let encounterName = "";
   for (let [key, fight] of fights.entries()) {
     if (
       fight.length > pullCount ||
       (fight.length === pullCount && fight.encounterID > encounterId)
     ) {
       pullCount = fight.length;
-      encounterId = fight[0].fight.encounterID;
-      encounterName = key;
+      encounterId = key;
     }
   }
-  return { name: encounterName, id: encounterId };
+  return encounterId;
 }
 
 function getKillAndWipeNumbers(pulls) {
   const kills = new Map();
   const wipes = new Map();
-  for (let [name, encounters] of pulls.entries()) {
-    if (!kills.has(name)) {
-      kills.set(name, []);
+  for (let [encounterID, encounters] of pulls.entries()) {
+    if (!kills.has(encounterID)) {
+      kills.set(encounterID, []);
     }
-    if (!wipes.has(name)) {
-      wipes.set(name, []);
+    if (!wipes.has(encounterID)) {
+      wipes.set(encounterID, []);
     }
     encounters.forEach((encounter, index) => {
       if (encounter.fight.kill) {
-        kills.get(name).push(index + 1);
+        kills.get(encounterID).push(index + 1);
       } else {
-        wipes.get(name).push(index + 1);
+        wipes.get(encounterID).push(index + 1);
       }
     });
   }
@@ -284,12 +326,14 @@ function getKillAndWipeNumbers(pulls) {
   return { kills, wipes };
 }
 
-function getPullNumber(killAndWipes, curIndex, encounter) {
+function getPullNumber(killAndWipes, curIndex, encounterID) {
   let killOrWipeNumber = killAndWipes.wipes
-    .get(encounter)
+    .get(encounterID)
     .indexOf(curIndex + 1);
   if (killOrWipeNumber === -1) {
-    killOrWipeNumber = killAndWipes.kills.get(encounter).indexOf(curIndex + 1);
+    killOrWipeNumber = killAndWipes.kills
+      .get(encounterID)
+      .indexOf(curIndex + 1);
   }
 
   return killOrWipeNumber + 1;

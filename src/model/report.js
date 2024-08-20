@@ -1,17 +1,22 @@
 import objectHash from "object-hash";
 
 export default class Report {
-  constructor(title, startTime, endTime, encounters, owner, guild) {
+  constructor(title, startTime, endTime, encounters, owner, guild, rankings) {
     this.title = title;
     this.startTime = startTime;
     this.endTime = endTime;
     this.encounters = encounters;
     this.owner = owner;
     this.guild = guild;
+    this.bestPullRankings = rankings;
   }
 
   getHash() {
-    return objectHash.sha1(this, { excludeKeys: (key) => key === "endTime" });
+    return objectHash(this, {
+      excludeKeys: function (key) {
+        return key === "endTime";
+      },
+    });
   }
 
   getOwner() {

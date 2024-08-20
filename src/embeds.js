@@ -54,24 +54,25 @@ export function createEmbed(
     });
   } else {
     let fieldCount = 2;
-    for (let [encounterName, encounter] of report.encounters.entries()) {
+    for (let [encounterID, encounter] of report.encounters.entries()) {
+      const encounterName = encounter.bestPull.bossName;
       if (fieldCount + 3 > 25) {
         return embed;
       }
-      const bestPullRanking = encounter.rankings;
+
+      const bestPullRanking = report.bestPullRankings.get(encounterID);
+      const bestPull = bestPullRanking.pull;
 
       embed.addFields(
         createEncounterTitle(encounterName, encounter),
-        createBestPullField(bestPullRanking.pull)
+        createBestPullField(bestPull)
       );
-      if (bestPullRanking.pull.kill && bestPullRanking.ranking) {
-        embed.addFields(createBestPullSpeedRanking(bestPullRanking));
-      } else if (!bestPullRanking.pull.kill) {
-        embed.addFields(getBestPullRemainingHP(bestPullRanking.pull));
+      if (bestPull.kill && bestPullRanking.ranking) {
+        embed.addFields(createBestPullSpeedRanking(bestPullRanking.ranking));
+      } else if (!bestPull.kill) {
+        embed.addFields(getBestPullRemainingHP(bestPull));
       }
-      embed.addFields(
-        createBestPullLinks(reportUrl, reportCode, bestPullRanking.pull)
-      );
+      embed.addFields(createBestPullLinks(reportUrl, reportCode, bestPull));
       fieldCount += 3;
     }
   }
@@ -147,9 +148,9 @@ function createBestPullField(bestPull) {
   };
 }
 
-function createBestPullSpeedRanking(bestPull) {
-  let rank = `Top ${100 - bestPull.ranking}%`;
-  if (bestPull.ranking === 100) {
+function createBestPullSpeedRanking(ranking) {
+  let rank = `Top ${100 - ranking}%`;
+  if (ranking === 100) {
     rank = "1st";
   }
   return {
@@ -229,10 +230,10 @@ function getThumbnail(encounters) {
 
 function buildAnalysisUrl(reportCode, bestPull) {
   const url = new URL(XIV_ANALYSIS_URL);
-  url.pathname = `fflogs/${reportCode}/${bestPull.fightNumber}`;
+  url.pathname = `fflogs/${reportCode}/${bestPull.fightID}`;
   return url.href;
 }
 
 function buildBestPullUrl(reportUrl, bestPull) {
-  return reportUrl + `#fight=${bestPull.fightNumber}`;
+  return reportUrl + `#fight=${bestPull.fightID}`;
 }

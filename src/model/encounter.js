@@ -1,7 +1,7 @@
 export default class Encounter {
   constructor() {
     this.fights = [];
-    this.ranking = null;
+    this.bestPull = null;
   }
 
   addFight(fight) {

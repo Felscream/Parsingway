@@ -74,6 +74,7 @@ function sendReport(
         });
     }
   }
+
   const embed = createEmbed(report, code, reportUrl, withAutoRefreshMessage);
   channel
     .send({ embeds: [embed], flags: MessageFlags.SuppressNotifications })
@@ -104,9 +105,11 @@ function addNewServerReport(
       message,
       channel.id,
       report.getHash(),
-      report.getOwner()
+      report.getOwner(),
+      report.bestPullRankings
     )
   );
+
   reportsPerServer.get(serverId).timeoutId = setInterval(
     updateReport,
     REPORT_UPDATE_DELAY,
@@ -131,7 +134,8 @@ function updateServerReportData(report, serverId, reportUrl, code, channel) {
       code,
       channel,
       report.getHash(),
-      report.endTime
+      report.endTime,
+      report.bestPullRankings
     );
   };
 }
@@ -143,7 +147,8 @@ function setServerReportData(
   code,
   channel,
   reportHash,
-  endTime
+  endTime,
+  bestPullRankings
 ) {
   reportsPerServer.get(serverId).reportUrl = reportUrl;
   reportsPerServer.get(serverId).endOfLife = getReportEndOfLife();
@@ -152,6 +157,7 @@ function setServerReportData(
   reportsPerServer.get(serverId).channelId = channel.id;
   reportsPerServer.get(serverId).reportHash = reportHash;
   reportsPerServer.get(serverId).reportEndTime = endTime;
+  reportsPerServer.get(serverId).bestPullRankings = bestPullRankings;
 }
 
 function deleteReport(serverId, updateMessage = false) {
@@ -198,61 +204,63 @@ function updateReport(serverId) {
 
   const serverReport = reportsPerServer.get(serverId);
 
-  reportService.synthesize(serverReport.reportCode).then(
-    (newReport) => {
-      const newReportHash = newReport.getHash();
-      if (newReportHash === serverReport.reportHash) {
-        logger.info(
-          `Report ${serverReport.reportCode} by ${serverReport.owner} on server ${serverId}  has not changed, no update required`
-        );
-        if (
-          Duration.between(
-            serverReport.endOfLife,
-            ZonedDateTime.now()
-          ).seconds() > 0
-        ) {
+  reportService
+    .synthesizeReport(serverReport.reportCode, serverReport.bestPullRankings)
+    .then(
+      (newReport) => {
+        const newReportHash = newReport.getHash();
+        if (newReportHash === serverReport.reportHash) {
           logger.info(
-            `No changes detected for a long period on report ${serverReport.reportCode} by ${serverReport.owner} on server ${serverId}, it will be deleted`
+            `Report ${serverReport.reportCode} by ${serverReport.owner} on server ${serverId}  has not changed, no update required`
           );
-          deleteReport(serverId, true);
+          if (
+            Duration.between(
+              serverReport.endOfLife,
+              ZonedDateTime.now()
+            ).seconds() > 0
+          ) {
+            logger.info(
+              `No changes detected for a long period on report ${serverReport.reportCode} by ${serverReport.owner} on server ${serverId}, it will be deleted`
+            );
+            deleteReport(serverId, true);
+          }
+          return;
         }
-        return;
-      }
 
-      logger.info(
-        `Changes detected on report ${serverReport.reportCode} by ${serverReport.owner} on server ${serverId}, updating ...`
-      );
+        logger.info(
+          `Changes detected on report ${serverReport.reportCode} by ${serverReport.owner} on server ${serverId}, updating ...`
+        );
 
-      const embed = createEmbed(
-        newReport,
-        serverReport.reportCode,
-        serverReport.reportUrl,
-        true
-      );
-      const originalMessage = reportsPerServer.get(serverId).embedMessage;
-      originalMessage
-        .edit({ embeds: [embed] })
-        .then(
-          updateServerReportData(
-            newReport,
-            serverId,
-            serverReport.reportUrl,
-            serverReport.reportCode,
-            originalMessage.channel
+        const embed = createEmbed(
+          newReport,
+          serverReport.reportCode,
+          serverReport.reportUrl,
+          true
+        );
+        const originalMessage = reportsPerServer.get(serverId).embedMessage;
+        originalMessage
+          .edit({ embeds: [embed] })
+          .then(
+            updateServerReportData(
+              newReport,
+              serverId,
+              serverReport.reportUrl,
+              serverReport.reportCode,
+              originalMessage.channel
+            )
           )
-        )
-        .catch((error) => {
-          logger.error(
-            `Error while editing message for report ${serverReport.reportCode} by ${serverReport.owner}. It will be deleted`
-          );
-          logger.error(error);
-          deleteReport(serverId);
-        });
-    },
-    (reject) => {
-      logger.error(reject);
-    }
-  );
+          .catch((error) => {
+            logger.error(
+              `Error while editing message for report ${serverReport.reportCode} by ${serverReport.owner}. It will be deleted`
+            );
+            logger.error(error);
+            deleteReport(serverId);
+          });
+      },
+      (reject) => {
+        logger.error(reject);
+      }
+    );
 }
 
 function canTrackReport(serverId) {
@@ -401,7 +409,7 @@ parsingway.on(Events.MessageCreate, (message) => {
     stopPreviousReportUpdates(serverId);
   }
   logger.info(`Received new report ${code} from ${serverId}`);
-  reportService.synthesize(code).then(
+  reportService.synthesizeReport(code).then(
     (report) => {
       const timeSinceLastReportUpdate = Duration.between(
         report.endTime,

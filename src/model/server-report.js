@@ -7,7 +7,8 @@ export default class ServerReport {
     embedMessage,
     channelId,
     reportHash,
-    owner
+    owner,
+    bestPullRankings
   ) {
     this.reportUrl = reportUrl;
     this.reportCode = reportCode;
@@ -18,5 +19,6 @@ export default class ServerReport {
     this.reportHash = reportHash;
     this.timeoutId = null;
     this.owner = owner;
+    this.bestPullRankings = bestPullRankings;
   }
 }
