@@ -46,17 +46,20 @@ class ReportService {
     for (let [newEncounterID, newEncounter] of newEncounters.entries()) {
       const newBestPull = newEncounter.bestPull;
       let ranking = null;
+      let rankingAvailable = true;
       if (
         previousBestPullRankings.has(newEncounterID) &&
         objectHash(newBestPull) ===
           objectHash(previousBestPullRankings.get(newEncounterID).pull)
       ) {
         ranking = previousBestPullRankings.get(newEncounterID).ranking;
+        rankingAvailable =
+          previousBestPullRankings.get(newEncounterID).rankingAvailable;
       }
 
       bestPullRankings.set(
         newEncounterID,
-        new BestPullRanking(newBestPull, ranking)
+        new BestPullRanking(newBestPull, ranking, rankingAvailable)
       );
     }
 
@@ -64,8 +67,7 @@ class ReportService {
     try {
       updatedRankings = await this.getBestPullRankingPerEncounter(
         reportCode,
-        bestPullRankings,
-        previousBestPullRankings
+        bestPullRankings
       );
     } catch (warning) {
       logger.warn(warning);
@@ -79,7 +81,9 @@ class ReportService {
 
   retrieveFightIDs(currentBestPullRankings) {
     return Array.from(currentBestPullRankings.values())
-      .filter((curr) => curr.pull.kill && !curr.ranking)
+      .filter(
+        (curr) => curr.pull.kill && curr.rankingAvailable && !curr.ranking
+      )
       .map((curr) => curr.pull.fightID);
   }
 
@@ -97,15 +101,41 @@ class ReportService {
       `Retrieving new rankings for pulls ${fightIDs} for report ${reportCode}`
     );
 
-    let rankings = null;
+    let rankingsWrapper = null;
     try {
-      rankings = await this.fflogsClient.getSpeedRanking(reportCode, fightIDs);
+      rankingsWrapper = await this.fflogsClient.getSpeedRanking(
+        reportCode,
+        fightIDs
+      );
     } catch (error) {
       return Promise.reject(error);
     }
 
+    const rankings = rankingsWrapper.reportData.report.rankings.data;
+
     const rankingsPerEncounter = new Map();
-    rankings.reportData.report.rankings.data
+
+    // Check if speed ranking exists for each fightID. If not
+    // mark the encounter as untrackable
+    fightIDs.forEach((fightID) => {
+      if (
+        rankings.find((ranking) => ranking.fightID && ranking.speed.rankPercent)
+      ) {
+        return;
+      }
+      const pull = bestPulls.find((pull) => pull.fightID === fightID);
+      if (!pull) {
+        return;
+      }
+      const encounterID = pull.encounterID;
+      rankingsPerEncounter.set(
+        encounterID,
+        new BestPullRanking(pull, null, false)
+      );
+    });
+
+    // Store retrieved rankings if present
+    rankings
       .filter((ranking) => !isNaN(ranking.speed?.rankPercent))
       .forEach((ranking) => {
         const speedRanking = ranking.speed?.rankPercent || null;
