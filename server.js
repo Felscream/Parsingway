@@ -354,6 +354,31 @@ function removeAllReports() {
   logger.info(`${deletedReportCount} reports were removed`);
 }
 
+function handleReportRetrievalError(reject, code, reportUrl, channel) {
+  const errorMessage = reject.response?.errors[0].message;
+  if (
+    errorMessage === PRIVATE_REPORT_ERROR ||
+    errorMessage === REPORT_DOES_NOT_EXIST
+  ) {
+    createErrorEmbed(code, reportUrl, channel);
+  } else {
+    logger.error(reject);
+  }
+}
+
+function createErrorEmbed(code, reportUrl, channel) {
+  logger.error(`Report ${code} can't be found or is private`);
+  const embed = createSimpleEmbedWithMessage(
+    reportUrl,
+    "An error occured",
+    `The report ${code} either does not exist or is private.`
+  );
+  channel.send({
+    embeds: [embed],
+    flags: MessageFlags.SuppressNotifications,
+  });
+}
+
 const reportsPerServer = new Map();
 const token = config.get("token");
 const parsingway = new Client({
@@ -480,27 +505,3 @@ parsingway.on(Events.InteractionCreate, async (interaction) => {
 });
 
 parsingway.login(token);
-function handleReportRetrievalError(reject, code, reportUrl, channel) {
-  const errorMessage = reject.response?.errors[0].message;
-  if (
-    errorMessage === PRIVATE_REPORT_ERROR ||
-    errorMessage === REPORT_DOES_NOT_EXIST
-  ) {
-    createErrorEmbed(code, reportUrl, channel);
-  } else {
-    logger.error(reject);
-  }
-}
-
-function createErrorEmbed(code, reportUrl, channel) {
-  logger.error(`Report ${code} can't be found or is private`);
-  const embed = createSimpleEmbedWithMessage(
-    reportUrl,
-    "An error occured",
-    `The report ${code} either does not exist or is private.`
-  );
-  channel.send({
-    embeds: [embed],
-    flags: MessageFlags.SuppressNotifications,
-  });
-}
