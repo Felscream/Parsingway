@@ -18,6 +18,13 @@ const EMPTY = "\u200B";
 const SPACER = `${EMPTY} ${EMPTY} ${EMPTY} ${EMPTY}`;
 const SERVERS_PER_PAGE = 25;
 
+export function createSimpleEmbedWithMessage(reportUrl, name, message) {
+  return new EmbedBuilder().setURL(reportUrl).setTitle(reportUrl).addFields({
+    name: name,
+    value: message,
+  });
+}
+
 export function createEmbed(
   report,
   reportCode,

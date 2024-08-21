@@ -8,7 +8,12 @@ import {
 import config from "config";
 import { ReportService } from "./src/fflogs/report-service.js";
 import { Duration, LocalDateTime, ZonedDateTime } from "js-joda";
-import { createEmbed, removeFooter, createStatsEmbed } from "./src/embeds.js";
+import {
+  createEmbed,
+  createSimpleEmbedWithMessage,
+  removeFooter,
+  createStatsEmbed,
+} from "./src/embeds.js";
 import logger from "./logger.js";
 import ServerReport from "./src/model/server-report.js";
 import CooldownService from "./src/cooldown-service.js";
@@ -26,6 +31,8 @@ const MAX_SERVER_COUNT = config.get("max_servers"); // how many servers can have
 const CALL_COOLDOWN = config.get("call_cooldown");
 const CALL_COUNT_ALERT_THRESHOLD = config.get("call_per_hour_alert_threshold");
 const ADMIN_ID = config.get("admin_id");
+const PRIVATE_REPORT_ERROR = "You do not have permission to view this report.";
+const REPORT_DOES_NOT_EXIST = "This report does not exist.";
 
 const reportService = new ReportService(
   config.get("fflogs"),
@@ -434,7 +441,24 @@ parsingway.on(Events.MessageCreate, (message) => {
       }
     },
     (reject) => {
-      logger.error(reject);
+      const errorMessage = reject.response?.errors[0].message;
+      if (
+        errorMessage === PRIVATE_REPORT_ERROR ||
+        errorMessage === REPORT_DOES_NOT_EXIST
+      ) {
+        logger.error(`Report ${code} can't be found or is private`);
+        const embed = createSimpleEmbedWithMessage(
+          reportUrl,
+          "An error occured",
+          `The report ${code} either does not exist or is private.`
+        );
+        channel.send({
+          embeds: [embed],
+          flags: MessageFlags.SuppressNotifications,
+        });
+      } else {
+        logger.error(reject);
+      }
     }
   );
 });
