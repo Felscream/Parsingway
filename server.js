@@ -355,6 +355,10 @@ function removeAllReports() {
 }
 
 function handleReportRetrievalError(reject, code, reportUrl, channel) {
+  if(!reject.response.errors){
+    logger.error(reject);
+    return;
+  }
   const errorMessage = reject.response?.errors[0].message;
   if (
     errorMessage === PRIVATE_REPORT_ERROR ||
