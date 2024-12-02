@@ -20,5 +20,6 @@ export default class ServerReport {
     this.timeoutId = null;
     this.owner = owner;
     this.bestPullRankings = bestPullRankings;
+    this.errorCount = 0;
   }
 }

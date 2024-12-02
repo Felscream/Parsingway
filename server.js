@@ -216,6 +216,7 @@ function updateReport(serverId) {
     .then(
       (newReport) => {
         const newReportHash = newReport.getHash();
+        serverReport.errorCount = 0;
         if (newReportHash === serverReport.reportHash) {
           logger.info(
             `Report ${serverReport.reportCode} by ${serverReport.owner} on server ${serverId}  has not changed, no update required`
@@ -266,13 +267,18 @@ function updateReport(serverId) {
       },
       (reject) => {
         logger.error(reject);
-        handleReportRetrievalError(
-          reject,
-          serverReport.reportCode,
-          serverReport.reportUrl,
-          originalMessage.channel
-        );
-        deleteReport(serverId, true);
+        if (serverReport.errorCount < 1) {
+          handleReportRetrievalError(
+            reject,
+            serverReport.reportCode,
+            serverReport.reportUrl,
+            originalMessage.channel
+          );
+        }
+        serverReport.errorCount++;
+        if (serverReport.errorCount > 5) {
+          deleteReport(serverId, true);
+        }
       }
     );
 }
@@ -355,7 +361,7 @@ function removeAllReports() {
 }
 
 function handleReportRetrievalError(reject, code, reportUrl, channel) {
-  if(!reject.response.errors){
+  if (!reject.response.errors) {
     logger.error(reject);
     return;
   }
@@ -477,7 +483,7 @@ parsingway.on(Events.MessageCreate, (message) => {
       }
     },
     (reject) => {
-      handleReportRetrievalError(reject, code, reportUrl, channel);
+      //handleReportRetrievalError(reject, code, reportUrl, channel);
     }
   );
 });
