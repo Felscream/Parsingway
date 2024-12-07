@@ -361,7 +361,7 @@ function removeAllReports() {
 }
 
 function handleReportRetrievalError(reject, code, reportUrl, channel) {
-  if (!reject.response.errors) {
+  if (reject.err || !reject.response || !reject.response.errors) {
     logger.error(reject);
     return;
   }
