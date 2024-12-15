@@ -70,7 +70,6 @@ class ReportService {
         bestPullRankings
       );
     } catch (warning) {
-      logger.warn(warning);
       return bestPullRankings;
     }
     for (let encounterID of updatedRankings.keys()) {

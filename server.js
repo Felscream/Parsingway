@@ -218,9 +218,6 @@ function updateReport(serverId) {
         const newReportHash = newReport.getHash();
         serverReport.errorCount = 0;
         if (newReportHash === serverReport.reportHash) {
-          logger.info(
-            `Report ${serverReport.reportCode} by ${serverReport.owner} on server ${serverId}  has not changed, no update required`
-          );
           if (
             Duration.between(
               serverReport.endOfLife,
@@ -467,7 +464,6 @@ parsingway.on(Events.MessageCreate, (message) => {
       const withAutoRefresh =
         timeSinceLastReportUpdate.seconds() < OLD_REPORT_THESHOLD;
       const saveNewReport = canTrackReport(serverId) && withAutoRefresh;
-      logger.info(`Auto refresh for report ${code} : ${withAutoRefresh}`);
       try {
         sendReport(
           serverId,
