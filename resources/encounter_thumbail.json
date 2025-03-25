@@ -28,6 +28,22 @@
         "thumbnail": "https://i.imgur.com/YM4Hy2t.png"
     },
     "96": {
+        "name": "M5S",
+        "thumbnail": "https://i.imgur.com/SikmFeZ.png"
+    },
+    "97": {
+        "name": "M6S",
+        "thumbnail": "https://i.imgur.com/ZDvHk7m.png"
+    },
+    "98": {
+        "name": "M7S",
+        "thumbnail": "https://i.imgur.com/lbe9jWl.png"
+    },
+    "99": {
+        "name": "M8S",
+        "thumbnail": "https://i.imgur.com/YM4Hy2t.png"
+    },
+    "100": {
         "name": "Wicked Thunder",
         "thumbnail": "https://i.imgur.com/SikmFeZ.png"
     },
@@ -65,6 +81,10 @@
     },
     "1079":{
 	    "name": "Futures Rewritten (Ultimate)",
+        "thumbnail": "https://i.imgur.com/A7cEvt9.png"
+    },
+    "1080":{
+	    "name": "EX4",
         "thumbnail": "https://i.imgur.com/A7cEvt9.png"
     }
 }
