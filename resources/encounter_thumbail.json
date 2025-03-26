@@ -28,25 +28,26 @@
         "thumbnail": "https://i.imgur.com/YM4Hy2t.png"
     },
     "96": {
-        "name": "M5S",
-        "thumbnail": "https://i.imgur.com/SikmFeZ.png"
-    },
-    "97": {
-        "name": "M6S",
-        "thumbnail": "https://i.imgur.com/ZDvHk7m.png"
-    },
-    "98": {
-        "name": "M7S",
-        "thumbnail": "https://i.imgur.com/lbe9jWl.png"
-    },
-    "99": {
-        "name": "M8S",
-        "thumbnail": "https://i.imgur.com/YM4Hy2t.png"
-    },
-    "100": {
         "name": "Wicked Thunder",
         "thumbnail": "https://i.imgur.com/SikmFeZ.png"
     },
+    "97": {
+        "name": "Dancing Green",
+        "thumbnail": "https://i.imgur.com/SCZCHtT.png"
+    },
+    "98": {
+        "name": "Sugar Riot",
+        "thumbnail": "https://i.imgur.com/INZfPX8.png"
+    },
+    "99": {
+        "name": "Brute Abominator",
+        "thumbnail": "https://i.imgur.com/MuBAnC5.png"
+    },
+    "100": {
+        "name": "Howling Blade",
+        "thumbnail": "https://i.imgur.com/SZuGLn5.png"
+    },
+    
     "1071": {
         "name": "Valigarmanda",
         "thumbnail": "https://i.imgur.com/Co8ELqX.png"
