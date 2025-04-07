@@ -2,7 +2,9 @@
 
 Parsingway is a small bot that generates a summary of the most played encounters from an FFLogs report.
 
-It's a useful tool for your FFXIV static if you have a dedicated log channel to track your progress through a raid tier, and to get an idea of the content of your reports without opening them.
+It's a useful tool for your FFXIV static if you have a dedicated log channel to track your progress through a raid tier, and to preview the content of your reports.
+
+[Invite link](https://discord.com/oauth2/authorize?client_id=1225561517244547112)
 
 <img src="https://i.imgur.com/52eRX0o.png">
 
@@ -27,6 +29,4 @@ Limits :
 - Sending a new message on the channel with the currently tracked report, or a new report on the discord server will interrupt the previous report tracking.
 - Tracking stops if no updates have been detected for more than 1 hour and 30 minutes
 - Due to API limitations, only 80 reports can be live tracked at once. This limit may increase later.
-
-[Invite link](https://discord.com/oauth2/authorize?client_id=1225561517244547112)
 
