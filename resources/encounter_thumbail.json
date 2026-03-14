@@ -47,7 +47,26 @@
         "name": "Howling Blade",
         "thumbnail": "https://i.imgur.com/SZuGLn5.png"
     },
-    
+    "101": {
+        "name": "Vamp Fatale",
+        "thumbnail": "https://i.imgur.com/ndq6uUc.png"
+    },
+    "102": {
+        "name": "Red Hot & Deep Blue",
+        "thumbnail": "https://i.imgur.com/O32yPzR.png"
+    },
+    "103": {
+        "name": "The Tyrant",
+        "thumbnail": "https://i.imgur.com/zHdnhww.png"
+    },
+    "104": {
+        "name": "The Lindwurm",
+        "thumbnail": "https://i.imgur.com/0CrRz7U.png"
+    },
+    "105": {
+        "name": "The Lindwurm II",
+        "thumbnail": "https://i.imgur.com/hF8Pfwi.png"
+    },
     "1071": {
         "name": "Valigarmanda",
         "thumbnail": "https://i.imgur.com/Co8ELqX.png"
@@ -85,7 +104,15 @@
         "thumbnail": "https://i.imgur.com/A7cEvt9.png"
     },
     "1080":{
-	    "name": "EX4",
+	    "name": "DT-EX4",
         "thumbnail": "https://i.imgur.com/v07jBeN.png"
+    },
+    "1081":{
+	    "name": "DT-EX5",
+        "thumbnail": "https://assets.rpglogs.com/img/ff/bosses/1081-icon.jpg?v=4"
+    },
+    "1083":{
+	    "name": "DT-EX6",
+        "thumbnail": "https://i.imgur.com/5nYJwsA.png"
     }
 }
