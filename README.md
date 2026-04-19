@@ -11,7 +11,7 @@ It's a useful tool for your FFXIV static if you have a dedicated log channel to 
 For each encounter, Parsingway will indicate :
 
 - the amount of time spent in combat
-- the nubmer of kills
+- the number of kills
 - the number of wipes
 - the best pull (boss remaining HP) or the best kill (lowest kill time)
 - links to the best pull on FFLogs and XIVAnalysis
