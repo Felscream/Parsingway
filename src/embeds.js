@@ -1,6 +1,6 @@
 import { EmbedBuilder } from "discord.js";
 import { DateTimeFormatter, Duration, LocalTime } from "js-joda";
-import encounterThumbnails from "../resources/encounter_thumbail.json" assert { type: "json" };
+import encounterThumbnails from "../resources/encounter_thumbail.json" with { type: "json" };
 
 const DURATION_FORMATTER = DateTimeFormatter.ofPattern("m:ss");
 const TOTAL_DURATION_FORMATTER = DateTimeFormatter.ofPattern("H:mm:ss");
