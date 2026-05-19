@@ -773,8 +773,15 @@ async function fetchLogContent(streamName) {
     function formatLogText(rawText) {
       if (!rawText) return 'Log stream is empty.';
       
+      // Reverse lines so newest logs appear at the top
+      let lines = rawText.split('\n');
+      // Filter out trailing empty lines before reversing
+      if (lines[lines.length - 1].trim() === '') lines.pop();
+      lines.reverse();
+      let reversedText = lines.join('\n');
+      
       // 1. Escape HTML to prevent injection
-      let html = rawText
+      let html = reversedText
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -806,8 +813,11 @@ async function fetchLogContent(streamName) {
     
     logContentBlock.innerHTML = formatLogText(text);
     
-    // Auto-scroll to bottom
-    logContentBlock.scrollTop = logContentBlock.scrollHeight;
+    // Ensure we are at the top
+    const logPre = document.getElementById('log-viewer-content').parentElement;
+    if (logPre && logPre.classList.contains('log-pre')) {
+      logPre.scrollTop = 0;
+    }
   } catch (error) {
     console.error('Failed to fetch log content:', error);
     logContentBlock.textContent = 'Error loading logs:\n' + error.message;

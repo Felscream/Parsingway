@@ -1125,8 +1125,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  height: 600px;
-  max-height: calc(100vh - 250px);
+  height: calc(100vh - 160px);
 }
 
 .logs-toolbar {
@@ -1187,15 +1186,19 @@ body {
   min-height: 0;
 }
 
-.log-content {
+.log-pre {
   margin: 0;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.log-content {
+  display: block;
   padding: 16px;
   font-family: 'Consolas', 'Courier New', monospace;
   font-size: 13px;
   line-height: 1.5;
   color: #a9b1d6;
-  overflow-y: auto;
-  height: 100%;
   white-space: pre-wrap;
   word-wrap: break-word;
 }
@@ -1210,17 +1213,17 @@ body {
 .log-debug { color: #7aa2f7; font-weight: bold; }
 .log-fatal { color: #ff007c; font-weight: bold; }
 
-.log-content::-webkit-scrollbar {
+.log-pre::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
-.log-content::-webkit-scrollbar-track {
+.log-pre::-webkit-scrollbar-track {
   background: #0f111a;
 }
-.log-content::-webkit-scrollbar-thumb {
+.log-pre::-webkit-scrollbar-thumb {
   background: #2a2e45;
   border-radius: 5px;
 }
-.log-content::-webkit-scrollbar-thumb:hover {
+.log-pre::-webkit-scrollbar-thumb:hover {
   background: #3b4261;
 }

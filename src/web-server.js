@@ -232,7 +232,7 @@ export function startWebServer({
         }
 
         const header = `\n--- [FILE: ${streamFiles[i]}] ---\n`;
-        totalContent = header + content + totalContent;
+        totalContent = content + header + totalContent;
       }
 
       res.type("text/plain").send(totalContent.trim());
