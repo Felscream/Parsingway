@@ -1,7 +1,6 @@
 import { Duration, LocalDateTime } from "js-joda";
 import logger from "../logger.js";
 
-var self;
 const HOUR_IN_MILLI = 3600000;
 
 export default class CooldownService {
@@ -9,10 +8,16 @@ export default class CooldownService {
     this.cooldown = cooldown;
     this.lastCallPerServer = new Map();
     this.callCountAlertThreshold = callCountAlertThreshold;
-    self = this;
 
-    // clear every hour
-    setInterval(() => clear(), HOUR_IN_MILLI);
+    // Clear every hour
+    this.clearCallCountInterval = setInterval(() => {
+      this.lastCallPerServer.clear();
+    }, HOUR_IN_MILLI);
+
+    // Allow Node to exit even if this interval is still scheduled
+    if (typeof this.clearCallCountInterval.unref === "function") {
+      this.clearCallCountInterval.unref();
+    }
   }
 
   canGetReport(serverId) {
@@ -47,10 +52,12 @@ export default class CooldownService {
       this.lastCallPerServer.set(serverId, new ServerCall());
     }
   }
-}
 
-function clear() {
-  self.lastCallPerServer = new Map();
+  destroy() {
+    if (this.clearCallCountInterval) {
+      clearInterval(this.clearCallCountInterval);
+    }
+  }
 }
 
 class ServerCall {

@@ -13,6 +13,7 @@ import {
   createSimpleEmbedWithMessage,
   removeFooter,
   createStatsEmbed,
+  getThumbnail,
 } from "./src/embeds.js";
 import logger from "./logger.js";
 import ServerReport from "./src/model/server-report.js";
@@ -23,6 +24,9 @@ import {
   ButtonTypes,
   pagination,
 } from "@devraelfreeze/discordjs-pagination";
+import { HistoryService } from "./src/history-service.js";
+import { startWebServer } from "./src/web-server.js";
+import { ActivityTracker } from "./src/activity-tracker.js";
 
 const REPORT_UPDATE_DELAY = config.get("report_update_delay"); // period between report updates
 const REPORT_TTL = config.get("report_TTL"); // how long we are waiting for a change in the log report before we delete it
@@ -43,6 +47,8 @@ const cooldownService = new CooldownService(
   CALL_COOLDOWN,
   CALL_COUNT_ALERT_THRESHOLD
 );
+
+const historyService = new HistoryService();
 
 const reportMatcher =
   /(https:\/\/www.fflogs.com\/reports\/(?:compare\/)?([A-za-z0-9]{12,16}))[#/]?/;
@@ -116,6 +122,7 @@ function addNewServerReport(
       report.bestPullRankings
     )
   );
+  reportsPerServer.get(serverId).thumbnailUrl = getThumbnail(report.encounters);
 
   reportsPerServer.get(serverId).timeoutId = setInterval(
     updateReport,
@@ -142,7 +149,8 @@ function updateServerReportData(report, serverId, reportUrl, code, channel) {
       channel,
       report.getHash(),
       report.endTime,
-      report.bestPullRankings
+      report.bestPullRankings,
+      getThumbnail(report.encounters)
     );
   };
 }
@@ -155,7 +163,8 @@ function setServerReportData(
   channel,
   reportHash,
   endTime,
-  bestPullRankings
+  bestPullRankings,
+  thumbnailUrl
 ) {
   reportsPerServer.get(serverId).reportUrl = reportUrl;
   reportsPerServer.get(serverId).endOfLife = getReportEndOfLife();
@@ -165,6 +174,7 @@ function setServerReportData(
   reportsPerServer.get(serverId).reportHash = reportHash;
   reportsPerServer.get(serverId).reportEndTime = endTime;
   reportsPerServer.get(serverId).bestPullRankings = bestPullRankings;
+  reportsPerServer.get(serverId).thumbnailUrl = thumbnailUrl;
 }
 
 function deleteReport(serverId, updateMessage = false) {
@@ -199,22 +209,26 @@ function updateReport(serverId) {
     !reportsPerServer.has(serverId) ||
     !reportsPerServer.get(serverId).embedMessage
   ) {
-    return;
+    return Promise.resolve(false);
   }
 
   if (cooldownService.canGetReport(serverId)) {
     cooldownService.registerServerCall(serverId);
   } else {
     logger.warn(`Blocked auto update from ${serverId}`);
-    return;
+    activityTracker.trackCooldownBlock();
+    return Promise.reject(new Error("Cooldown active. Please try again in a few seconds."));
   }
 
   const serverReport = reportsPerServer.get(serverId);
   const originalMessage = reportsPerServer.get(serverId).embedMessage;
-  reportService
+  const fetchStartTime = Date.now();
+  return reportService
     .synthesizeReport(serverReport.reportCode, serverReport.bestPullRankings)
     .then(
       (newReport) => {
+        activityTracker.trackFetch(Date.now() - fetchStartTime);
+        activityTracker.trackSuccess();
         const newReportHash = newReport.getHash();
         serverReport.errorCount = 0;
         if (newReportHash === serverReport.reportHash) {
@@ -229,7 +243,7 @@ function updateReport(serverId) {
             );
             deleteReport(serverId, true);
           }
-          return;
+          return false;
         }
 
         logger.info(
@@ -243,7 +257,7 @@ function updateReport(serverId) {
           true
         );
 
-        originalMessage
+        return originalMessage
           .edit({ embeds: [embed] })
           .then(
             updateServerReportData(
@@ -254,15 +268,18 @@ function updateReport(serverId) {
               originalMessage.channel
             )
           )
+          .then(() => true)
           .catch((error) => {
             logger.error(
               `Error while editing message for report ${serverReport.reportCode} by ${serverReport.owner}. It will be deleted`
             );
             logger.error(error);
             deleteReport(serverId);
+            throw error;
           });
       },
       (reject) => {
+        activityTracker.trackFailure();
         logger.error(reject);
         if (serverReport.errorCount < 1) {
           handleReportRetrievalError(
@@ -276,6 +293,7 @@ function updateReport(serverId) {
         if (serverReport.errorCount > 5) {
           deleteReport(serverId, true);
         }
+        throw new Error(reject.message || "Failed to retrieve report data from FF Logs.");
       }
     );
 }
@@ -388,6 +406,18 @@ function createErrorEmbed(code, reportUrl, channel) {
 
 const reportsPerServer = new Map();
 const token = config.get("token");
+const activityTracker = new ActivityTracker();
+
+const API_PORT = config.has("api_port") ? config.get("api_port") : 3000;
+startWebServer({
+  port: API_PORT,
+  reportsPerServer,
+  deleteReport,
+  updateReport,
+  historyService,
+  activityTracker,
+});
+
 const parsingway = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -443,9 +473,11 @@ parsingway.on(Events.MessageCreate, (message) => {
     cooldownService.registerServerCall(serverId);
   } else {
     logger.warn(`Blocked request from ${serverId}`);
+    activityTracker.trackCooldownBlock();
     return;
   }
 
+  activityTracker.trackRequest(serverId);
   const reportUrl = match[1].replace("compare/", "");
   const code = match[2];
   if (
@@ -454,9 +486,18 @@ parsingway.on(Events.MessageCreate, (message) => {
   ) {
     stopPreviousReportUpdates(serverId);
   }
+  const fetchStartTime = Date.now();
   logger.info(`Received new report ${code} from ${serverId}`);
   reportService.synthesizeReport(code).then(
     (report) => {
+      const fetchDuration = Date.now() - fetchStartTime;
+      activityTracker.trackFetch(fetchDuration);
+      activityTracker.trackResponse(fetchDuration);
+      activityTracker.trackSuccess();
+      const owner = report.getOwner();
+      const thumbnailUrl = getThumbnail(report.encounters);
+      historyService.addRecord(code, reportUrl, owner, serverId, channel.id, thumbnailUrl);
+
       const timeSinceLastReportUpdate = Duration.between(
         report.endTime,
         ZonedDateTime.now()
@@ -479,6 +520,8 @@ parsingway.on(Events.MessageCreate, (message) => {
       }
     },
     (reject) => {
+      activityTracker.trackFailure();
+      activityTracker.trackResponse(Date.now() - fetchStartTime);
       //handleReportRetrievalError(reject, code, reportUrl, channel);
     }
   );

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parsingway Dashboard</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo-icon">
+          <i data-lucide="swords" class="pulse-icon"></i>
+        </div>
+        <div class="brand-text">
+          <h1>Parsingway</h1>
+          <span>FF Logs Tracker</span>
+        </div>
+      </div>
+      
+      <nav class="nav-menu">
+        <button class="nav-item active" data-tab="active-reports">
+          <i data-lucide="activity"></i>
+          <span>Tracked Reports</span>
+          <span class="badge" id="active-count-badge">0</span>
+        </button>
+        <button class="nav-item" data-tab="history">
+          <i data-lucide="history"></i>
+          <span>History Log</span>
+          <span class="badge" id="history-count-badge">0</span>
+        </button>
+        <button class="nav-item" data-tab="activity">
+          <i data-lucide="bar-chart-2"></i>
+          <span>Activity Stats</span>
+        </button>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="status-indicator online">
+          <span class="pulse-dot"></span>
+          <span>Web Server Online</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top header bar -->
+      <header class="main-header">
+        <div class="header-title">
+          <h2 id="page-title">Tracked Reports</h2>
+          <p id="page-subtitle">Real-time FF Logs active update dashboard</p>
+        </div>
+        <div class="header-actions">
+          <button id="global-refresh-btn" class="btn btn-secondary">
+            <i data-lucide="refresh-cw"></i>
+            <span>Refresh Dashboard</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Active Reports Tab -->
+      <section id="active-reports-tab" class="tab-content active">
+        <div class="stats-overview">
+          <div class="stat-card">
+            <div class="stat-icon purple">
+              <i data-lucide="eye"></i>
+            </div>
+            <div class="stat-details">
+              <span class="stat-label">Active Trackers</span>
+              <span class="stat-value" id="active-reports-count">0</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon blue">
+              <i data-lucide="server"></i>
+            </div>
+            <div class="stat-details">
+              <span class="stat-label">Servers Logging</span>
+              <span class="stat-value" id="server-count">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <h3>Currently Tracked Reports</h3>
+          <span class="section-desc">Logs matching recent activities that are auto-refreshing in Discord channels</span>
+        </div>
+
+        <!-- Tracked Reports Grid -->
+        <div class="reports-grid" id="reports-grid">
+          <!-- Loading state -->
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading active trackers...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- History Tab -->
+      <section id="history-tab" class="tab-content">
+        <div class="history-controls">
+          <div class="search-box">
+            <i data-lucide="search" class="search-icon"></i>
+            <input type="text" id="history-search" placeholder="Search by code, submitter, or server ID...">
+          </div>
+          <button id="clear-history-btn" class="btn btn-danger">
+            <i data-lucide="trash-2"></i>
+            <span>Clear History</span>
+          </button>
+        </div>
+
+        <div class="table-container">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Received At</th>
+                <th>Report Code</th>
+                <th>Submitter</th>
+                <th>Server ID</th>
+                <th>Channel ID</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-body">
+              <!-- Loading state -->
+              <tr>
+                <td colspan="6" class="table-loading">
+                  <div class="spinner"></div>
+                  <p>Loading history records...</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Activity Stats Tab -->
+      <section id="activity-tab" class="tab-content">
+        <div class="stats-overview">
+          <div class="stat-card">
+            <div class="stat-icon purple">
+              <i data-lucide="zap"></i>
+            </div>
+            <div class="stat-details">
+              <span class="stat-label">Requests / Hour</span>
+              <span class="stat-value" id="activity-req-per-hour">0</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon blue">
+              <i data-lucide="server"></i>
+            </div>
+            <div class="stat-details">
+              <span class="stat-label">Unique Servers Served</span>
+              <span class="stat-value" id="activity-unique-servers">0</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon green">
+              <i data-lucide="clock"></i>
+            </div>
+            <div class="stat-details">
+              <span class="stat-label">Bot Uptime</span>
+              <span class="stat-value" id="activity-uptime">0s</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon orange">
+              <i data-lucide="cpu"></i>
+            </div>
+            <div class="stat-details">
+              <span class="stat-label">Heap Memory</span>
+              <span class="stat-value" id="activity-memory">0 MB</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="activity-charts-grid">
+          <!-- Fetch Latency Sparkline Card -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <div class="chart-title-group">
+                <h4>FF Logs Fetch Latency</h4>
+                <p>Average response delay from FF Logs API</p>
+              </div>
+              <span class="chart-value" id="avg-fetch-latency">0 ms</span>
+            </div>
+            <div class="sparkline-container" id="fetch-sparkline">
+              <!-- Inline SVG sparkline will be injected here -->
+            </div>
+          </div>
+
+          <!-- Response Latency Sparkline Card -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <div class="chart-title-group">
+                <h4>Core Bot Response Latency</h4>
+                <p>Average time taken to parse & update Discord embeds</p>
+              </div>
+              <span class="chart-value" id="avg-response-latency">0 ms</span>
+            </div>
+            <div class="sparkline-container" id="response-sparkline">
+              <!-- Inline SVG sparkline will be injected here -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Success vs Failures metrics -->
+        <div class="activity-details-row">
+          <div class="diagnostics-card">
+            <h4>Request Resolution Summary</h4>
+            <div class="diagnostic-ratios">
+              <div class="ratio-bar-container">
+                <div class="ratio-labels">
+                  <span>Success Rate</span>
+                  <span id="success-rate-pct">0%</span>
+                </div>
+                <div class="ratio-progress-bg">
+                  <div class="ratio-progress-fill success" id="success-rate-fill" style="width: 0%"></div>
+                </div>
+              </div>
+              
+              <div class="diagnostics-metrics-list">
+                <div class="metric-item">
+                  <span class="metric-dot green animate-pulse"></span>
+                  <span class="metric-name">Successful Operations</span>
+                  <span class="metric-val" id="metric-success-count">0</span>
+                </div>
+                <div class="metric-item">
+                  <span class="metric-dot red"></span>
+                  <span class="metric-name">Failed Operations</span>
+                  <span class="metric-val" id="metric-failure-count">0</span>
+                </div>
+                <div class="metric-item">
+                  <span class="metric-dot orange"></span>
+                  <span class="metric-name">Cooldown Throttles</span>
+                  <span class="metric-val" id="metric-cooldown-count">0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- JS App -->
+  <script src="app.js"></script>
+</body>
+</html>

@@ -222,7 +222,7 @@ function hasKillOnReport(encounters) {
   return false;
 }
 
-function getThumbnail(encounters) {
+export function getThumbnail(encounters) {
   if (encounters.size === 0) {
     return DEFAULT_THUMBNAIL_URL;
   }
