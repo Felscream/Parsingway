@@ -76,6 +76,15 @@ function switchTab(tabId) {
     pageTitle.textContent = 'Activity Stats';
     pageSubtitle.textContent = 'Real-time bot performance and activity analytics';
     globalRefreshBtn.style.display = 'inline-flex';
+  } else if (tabId === 'logs') {
+    pageTitle.textContent = 'System Logs';
+    pageSubtitle.textContent = 'View PM2 log streams dynamically';
+    globalRefreshBtn.style.display = 'none'; // Disable global refresh for logs
+    
+    // Load logs if first time
+    if (!document.getElementById('log-stream-select').options.length || document.getElementById('log-stream-select').options[0].disabled) {
+      fetchLogStreams();
+    }
   }
 
   fetchData();
@@ -714,4 +723,111 @@ if (document.readyState === 'loading') {
   window.addEventListener('DOMContentLoaded', init);
 } else {
   init();
+}
+
+// --- Log Viewer Logic ---
+const logSelect = document.getElementById('log-stream-select');
+const refreshLogBtn = document.getElementById('refresh-log-btn');
+const logContentBlock = document.getElementById('log-viewer-content');
+
+async function fetchLogStreams() {
+  try {
+    const res = await fetch('/api/logs');
+    if (!res.ok) {
+      throw new Error(await res.text() || res.statusText);
+    }
+    const streams = await res.json();
+    
+    // Clear existing options
+    logSelect.innerHTML = '<option value="" disabled selected>Select a log stream to view...</option>';
+    
+    if (streams.length === 0) {
+      logSelect.innerHTML = '<option value="" disabled selected>No log streams found</option>';
+      return;
+    }
+
+    streams.forEach(stream => {
+      const option = document.createElement('option');
+      option.value = stream;
+      option.textContent = stream;
+      logSelect.appendChild(option);
+    });
+  } catch (error) {
+    console.error('Failed to fetch log streams:', error);
+    showToast('Failed to load log streams: ' + error.message, 'error');
+  }
+}
+
+async function fetchLogContent(streamName) {
+  if (!streamName) return;
+  
+  logContentBlock.textContent = 'Loading logs...';
+  
+  try {
+    const res = await fetch(`/api/logs/${encodeURIComponent(streamName)}`);
+    if (!res.ok) {
+      throw new Error(await res.text() || res.statusText);
+    }
+    const text = await res.text();
+    
+    function formatLogText(rawText) {
+      if (!rawText) return 'Log stream is empty.';
+      
+      // 1. Escape HTML to prevent injection
+      let html = rawText
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+        
+      // 2. Convert ANSI color codes (handles \x1b, \u001b, and literal brackets if incorrectly escaped)
+      html = html.replace(/(?:\x1b\[|\\u001b\[|\[)(\d+)[mK]/g, (match, p1) => {
+        if (p1 === '39' || p1 === '0') return '</span>'; // Reset
+        const colors = {
+          '30': 'black', '31': '#f7768e', '32': '#9ece6a', '33': '#e0af68',
+          '34': '#7aa2f7', '35': '#bb9af7', '36': '#7dcfff', '37': '#c0caf5',
+          '90': '#565f89'
+        };
+        if (colors[p1]) return `<span style="color: ${colors[p1]}">`;
+        return ''; // Ignore unknown/unsupported codes
+      });
+      
+      // 3. Colorize timestamps like [2026-05-19 20:35:59.513 +0200]
+      html = html.replace(/\[(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}.*?)\]/g, '<span class="log-timestamp">[$1]</span>');
+      
+      // 4. Colorize base log levels (if not already colored by ANSI)
+      html = html.replace(/\b(ERROR|WARN|INFO|DEBUG|FATAL)\b/g, (match) => {
+        const levelClass = match.toLowerCase();
+        return `<span class="log-level log-${levelClass}">${match}</span>`;
+      });
+      
+      return html;
+    }
+    
+    logContentBlock.innerHTML = formatLogText(text);
+    
+    // Auto-scroll to bottom
+    logContentBlock.scrollTop = logContentBlock.scrollHeight;
+  } catch (error) {
+    console.error('Failed to fetch log content:', error);
+    logContentBlock.textContent = 'Error loading logs:\n' + error.message;
+    showToast('Failed to load log content', 'error');
+  }
+}
+
+// Log Viewer Event Listeners
+if (logSelect) {
+  logSelect.addEventListener('change', (e) => {
+    fetchLogContent(e.target.value);
+  });
+}
+
+if (refreshLogBtn) {
+  refreshLogBtn.addEventListener('click', () => {
+    if (logSelect.value) {
+      fetchLogContent(logSelect.value);
+    } else {
+      fetchLogStreams();
+    }
+  });
 }
