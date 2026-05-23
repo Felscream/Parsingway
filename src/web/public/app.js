@@ -200,11 +200,11 @@ function renderTrackedReports() {
           </div>
           <div class="detail-row">
             <span class="detail-label">Server ID</span>
-            <span class="detail-value" title="${report.serverId}">${report.serverId.substring(0, 12)}...</span>
+            <span class="detail-value" title="${report.serverId}">${report.serverId}</span>
           </div>
           <div class="detail-row">
             <span class="detail-label">Channel ID</span>
-            <span class="detail-value" title="${report.channelId}">${report.channelId.substring(0, 12)}...</span>
+            <span class="detail-value" title="${report.channelId}">${report.channelId}</span>
           </div>
 
           <div class="expiry-progress-container">
@@ -376,8 +376,8 @@ function renderHistory() {
           </div>
         </td>
         <td><span class="detail-value">${item.owner}</span></td>
-        <td><span class="time-stamp" title="${item.serverId}">${item.serverId.substring(0, 16)}...</span></td>
-        <td><span class="time-stamp" title="${item.channelId}">${item.channelId.substring(0, 16)}...</span></td>
+        <td><span class="time-stamp" title="${item.serverId}">${item.serverId}</span></td>
+        <td><span class="time-stamp" title="${item.channelId}">${item.channelId}</span></td>
         <td>
           <a href="${item.reportUrl}" target="_blank" class="btn btn-secondary btn-icon-only" title="Open FF Logs">
             <i data-lucide="external-link"></i>
