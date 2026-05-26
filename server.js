@@ -89,7 +89,7 @@ function sendReport(
   }
 
   const embed = createEmbed(report, code, reportUrl, withAutoRefreshMessage);
-  channel
+  return channel
     .send({ embeds: [embed], flags: MessageFlags.SuppressNotifications })
     .then((message) => {
       if (saveNewReport) {
@@ -125,9 +125,12 @@ function addNewServerReport(
   reportsPerServer.get(serverId).thumbnailUrl = getThumbnail(report.encounters);
 
   reportsPerServer.get(serverId).timeoutId = setInterval(
-    updateReport,
-    REPORT_UPDATE_DELAY,
-    serverId
+    () => {
+      updateReport(serverId).catch((error) => {
+        logger.error(`Error during auto-refresh of report ${code} on server ${serverId}: ${error.message}`);
+      });
+    },
+    REPORT_UPDATE_DELAY
   );
   logger.info(`Added report ${code} from ${serverId} to tracked reports`);
 }
@@ -274,6 +277,7 @@ function updateReport(serverId) {
               `Error while editing message for report ${serverReport.reportCode} by ${serverReport.owner}. It will be deleted`
             );
             logger.error(error);
+            activityTracker.trackFailure();
             deleteReport(serverId);
             throw error;
           });
@@ -489,11 +493,9 @@ parsingway.on(Events.MessageCreate, (message) => {
   const fetchStartTime = Date.now();
   logger.info(`Received new report ${code} from ${serverId}`);
   reportService.synthesizeReport(code).then(
-    (report) => {
+    async (report) => {
       const fetchDuration = Date.now() - fetchStartTime;
       activityTracker.trackFetch(fetchDuration);
-      activityTracker.trackResponse(fetchDuration);
-      activityTracker.trackSuccess();
       const owner = report.getOwner();
       const thumbnailUrl = getThumbnail(report.encounters);
       historyService.addRecord(code, reportUrl, owner, serverId, channel.id, thumbnailUrl);
@@ -506,7 +508,7 @@ parsingway.on(Events.MessageCreate, (message) => {
         timeSinceLastReportUpdate.seconds() < OLD_REPORT_THESHOLD;
       const saveNewReport = canTrackReport(serverId) && withAutoRefresh;
       try {
-        sendReport(
+        await sendReport(
           serverId,
           code,
           channel,
@@ -515,8 +517,12 @@ parsingway.on(Events.MessageCreate, (message) => {
           saveNewReport,
           saveNewReport
         );
+        const responseDuration = Date.now() - fetchStartTime;
+        activityTracker.trackResponse(responseDuration);
+        activityTracker.trackSuccess();
       } catch (error) {
         logger.error(error);
+        activityTracker.trackFailure();
       }
     },
     (reject) => {
