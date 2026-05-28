@@ -213,7 +213,8 @@ class ReportService {
           encounterNumber,
           rawPull.fight.encounterID,
           rawPull.fightNumber,
-          rawPull.fight.name
+          rawPull.fight.name,
+          rawPull.fight.lastPhaseIsIntermission,
         );
         encounters.get(encounterID).addFight(pull);
       });

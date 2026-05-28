@@ -9,7 +9,8 @@ export default class Pull {
     killOrWipeNumber,
     encounterID,
     fightNumber,
-    bossName
+    bossName,
+    lastPhaseIsIntermission
   ) {
     this.fightID = fightID;
     this.bossPercentage = bossPercentage;
@@ -21,5 +22,6 @@ export default class Pull {
     this.encounterID = encounterID;
     this.fightNumber = fightNumber;
     this.bossName = bossName;
+    this.lastPhaseIsIntermission = lastPhaseIsIntermission;
   }
 }

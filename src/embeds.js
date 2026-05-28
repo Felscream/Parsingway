@@ -182,6 +182,9 @@ function createEncounterTitle(encounterName, encounter) {
 
 function buildPhaseText(bestPull) {
   if (bestPull.lastPhase !== 0 && !bestPull.kill) {
+    if (bestPull.lastPhaseIsIntermission) {
+      return `I${bestPull.lastPhase} - `;
+    }
     return `P${bestPull.lastPhase} - `;
   }
 

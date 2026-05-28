@@ -24,6 +24,7 @@ const reportQuery = gql`
           startTime
           endTime
           lastPhase
+          lastPhaseIsIntermission
         }
       }
     }
