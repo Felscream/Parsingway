@@ -1,6 +1,7 @@
 import { EmbedBuilder } from "discord.js";
 import { DateTimeFormatter, Duration, LocalTime } from "js-joda";
-import encounterThumbnails from "../resources/encounter_thumbail.json" with { type: "json" };
+import fs from "fs";
+import logger from "../logger.js";
 
 const DURATION_FORMATTER = DateTimeFormatter.ofPattern("m:ss");
 const TOTAL_DURATION_FORMATTER = DateTimeFormatter.ofPattern("H:mm:ss");
@@ -17,6 +18,30 @@ const XIV_ANALYSIS_URL = "https://xivanalysis.com/fflogs";
 const EMPTY = "\u200B";
 const SPACER = `${EMPTY} ${EMPTY} ${EMPTY} ${EMPTY}`;
 const SERVERS_PER_PAGE = 25;
+
+const THUMBNAILS_PATH = new URL("../resources/encounter_thumbail.json", import.meta.url);
+let encounterThumbnails = {};
+
+function loadThumbnails() {
+  try {
+    const fileContent = fs.readFileSync(THUMBNAILS_PATH, "utf-8");
+    encounterThumbnails = JSON.parse(fileContent);
+    logger.info("Encounter thumbnails loaded successfully.");
+  } catch (error) {
+    logger.error("Failed to read or parse encounter_thumbail.json:", error);
+  }
+}
+
+// Initial load
+loadThumbnails();
+
+// Watch for changes
+fs.watch(THUMBNAILS_PATH, (eventType) => {
+  if (eventType === 'change') {
+    logger.info("Encounter thumbnail file changed, reloading...");
+    loadThumbnails();
+  }
+});
 
 export function createSimpleEmbedWithMessage(reportUrl, name, message) {
   return new EmbedBuilder().setURL(reportUrl).setTitle(reportUrl).addFields({
