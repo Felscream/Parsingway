@@ -227,7 +227,7 @@ function updateReport(serverId) {
   const originalMessage = reportsPerServer.get(serverId).embedMessage;
   const fetchStartTime = Date.now();
   return reportService
-    .synthesizeReport(serverReport.reportCode, serverReport.bestPullRankings)
+    .synthesizeReport(serverReport.reportCode, serverReport.bestPullRankings, activityTracker)
     .then(
       (newReport) => {
         activityTracker.trackFetch(Date.now() - fetchStartTime);
@@ -528,7 +528,7 @@ parsingway.on(Events.MessageCreate, (message) => {
     (reject) => {
       activityTracker.trackFailure();
       activityTracker.trackResponse(Date.now() - fetchStartTime);
-      //handleReportRetrievalError(reject, code, reportUrl, channel);
+      handleReportRetrievalError(reject, code, reportUrl, channel);
     }
   );
 });

@@ -28,19 +28,24 @@ class ReportService {
     return Promise.resolve(data);
   }
 
-  async synthesizeReport(reportCode, previousRankings = new Map()) {
+  async synthesizeReport(reportCode, previousRankings = new Map(), activityTracker = null) {
     const data = await this.getReport(reportCode);
+    if(activityTracker) {
+      activityTracker.trackRequest(null);
+    }
     return await this.buildNewReport(
       data.reportData.report,
       reportCode,
-      previousRankings
+      previousRankings,
+      activityTracker
     );
   }
 
   async buildBestPullRankings(
     newEncounters,
     reportCode,
-    previousBestPullRankings = new Map()
+    previousBestPullRankings = new Map(),
+    activityTracker = null
   ) {
     const bestPullRankings = new Map();
     for (let [newEncounterID, newEncounter] of newEncounters.entries()) {
@@ -67,7 +72,8 @@ class ReportService {
     try {
       updatedRankings = await this.getBestPullRankingPerEncounter(
         reportCode,
-        bestPullRankings
+        bestPullRankings,
+        activityTracker
       );
     } catch (warning) {
       return bestPullRankings;
@@ -86,7 +92,7 @@ class ReportService {
       .map((curr) => curr.pull.fightID);
   }
 
-  async getBestPullRankingPerEncounter(reportCode, currentBestPullRankings) {
+  async getBestPullRankingPerEncounter(reportCode, currentBestPullRankings, activityTracker = null) {
     const bestPulls = Array.from(currentBestPullRankings.values()).map(
       (pullRanking) => pullRanking.pull
     );
@@ -101,6 +107,9 @@ class ReportService {
     );
 
     let rankingsWrapper = null;
+    if(activityTracker) {
+        activityTracker.trackRequest(null);
+    }
     try {
       rankingsWrapper = await this.fflogsClient.getSpeedRanking(
         reportCode,
@@ -152,7 +161,7 @@ class ReportService {
     return Promise.resolve(rankingsPerEncounter);
   }
 
-  async buildNewReport(rawReport, reportCode, previousRankings) {
+  async buildNewReport(rawReport, reportCode, previousRankings, activityTracker = null) {
     const startInstant = Instant.ofEpochMilli(rawReport.startTime);
     const startTime = ZonedDateTime.ofInstant(
       startInstant,
@@ -165,7 +174,8 @@ class ReportService {
     const bestPullRankings = await this.buildBestPullRankings(
       encounters,
       reportCode,
-      previousRankings
+      previousRankings,
+      activityTracker
     );
 
     const report = new Report(

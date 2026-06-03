@@ -18,9 +18,10 @@ export class ActivityTracker {
    * @param {string} serverId 
    */
   trackRequest(serverId) {
-    this.requests.push(Date.now());
     if (serverId) {
-      this.serversServed.add(serverId.toString());
+      this.serversServed.add(serverId);
+    } else {
+      this.requests.push(Date.now());
     }
   }
 
